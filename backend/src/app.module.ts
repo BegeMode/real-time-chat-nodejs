@@ -8,6 +8,7 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { ChatsModule } from './chats/chats.module.js';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { AppService } from './app.service.js';
     AuthModule,
     UsersModule,
     SocketGatewayModule,
+    ChatsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

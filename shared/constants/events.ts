@@ -46,19 +46,20 @@ export enum RedisChannels {
   USER_STATUS = 'chat:user_status',
   USER_TYPING = 'chat:user_typing',
 
-  // Conversation channels
-  CONVERSATION_CREATED = 'chat:conversation_created',
-  CONVERSATION_UPDATED = 'chat:conversation_updated',
+  // Chat channels
+  CHAT_CREATED = 'chat:created',
+  CHAT_UPDATED = 'chat:updated',
+  CHAT_DELETED = 'chat:deleted',
 }
 
 /**
  * Redis Pub/Sub Message Payload Types
  */
 export interface RedisNewMessagePayload {
-  conversationId: string;
+  chatId: string;
   messageId: string;
   senderId: string;
-  receiverId: string;
+  receiverIds: string[];
   text: string;
   createdAt: string;
 }
@@ -70,6 +71,18 @@ export interface RedisUserStatusPayload {
 
 export interface RedisUserTypingPayload {
   userId: string;
-  conversationId: string;
+  chatId: string;
   isTyping: boolean;
+}
+
+export interface RedisMessageDeletedPayload {
+  messageId: string;
+  chatId: string;
+  userId?: string;
+  forEveryone: boolean;
+}
+
+export interface RedisChatDeletedPayload {
+  chatId: string;
+  userId: string;
 }

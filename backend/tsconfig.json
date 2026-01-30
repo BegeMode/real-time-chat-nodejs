@@ -29,7 +29,7 @@
       "@app-types/*": ["./src/types/*"],
       "@auth/*": ["./src/auth/*"],
       "@users/*": ["./src/users/*"],
-      "@chat/*": ["./src/chat/*"],
+      "@chats/*": ["./src/chats/*"],
       "@common/*": ["./src/common/*"],
       "@socket-gateway/*": ["./src/socket-gateway/*"]
     }

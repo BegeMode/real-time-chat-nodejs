@@ -121,13 +121,11 @@ export class SocketGatewayService
 
     this.userSockets.get(authClient.userId)?.add(client.id);
 
-    // Join the conversation room
-    void client.join(`conversation:${chatId}`);
+    // Join the chat room
+    void client.join(`chat:${chatId}`);
 
     client.emit(SocketEvents.ROOM_JOINED, { chatId });
-    this.logger.log(
-      `User ${authClient.userId} joined room: conversation:${chatId}`,
-    );
+    this.logger.log(`User ${authClient.userId} joined room: chat:${chatId}`);
   }
 
   @UseGuards(SocketAuthGuard)
@@ -139,10 +137,8 @@ export class SocketGatewayService
     const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
 
-    void client.leave(`conversation:${chatId}`);
-    this.logger.log(
-      `User ${authClient.userId} left room: conversation:${chatId}`,
-    );
+    void client.leave(`chat:${chatId}`);
+    this.logger.log(`User ${authClient.userId} left room: chat:${chatId}`);
   }
 
   @UseGuards(SocketAuthGuard)
@@ -155,7 +151,7 @@ export class SocketGatewayService
     const authClient = client as IAuthenticatedSocket;
 
     // Broadcast to room except sender
-    client.to(`conversation:${chatId}`).emit(SocketEvents.TYPING_START, {
+    client.to(`chat:${chatId}`).emit(SocketEvents.TYPING_START, {
       userId: authClient.userId,
       chatId,
     });
@@ -170,7 +166,7 @@ export class SocketGatewayService
     const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
 
-    client.to(`conversation:${chatId}`).emit(SocketEvents.TYPING_STOP, {
+    client.to(`chat:${chatId}`).emit(SocketEvents.TYPING_STOP, {
       userId: authClient.userId,
       chatId,
     });
@@ -199,38 +195,37 @@ export class SocketGatewayService
    */
   private handleRedisNewMessage(payload: RedisNewMessagePayload): void {
     this.logger.log(
-      `Received new message from Redis for conversation: ${payload.conversationId}`,
+      `Received new message from Redis for chatId: ${payload.chatId}`,
     );
 
-    // Emit to the conversation room
-    this.server
-      .to(`conversation:${payload.conversationId}`)
-      .emit(SocketEvents.NEW_MESSAGE, {
-        _id: payload.messageId,
-        conversationId: payload.conversationId,
-        senderId: payload.senderId,
-        text: payload.text,
-        createdAt: payload.createdAt,
-      });
+    // Emit to the chat room
+    this.server.to(`chat:${payload.chatId}`).emit(SocketEvents.NEW_MESSAGE, {
+      _id: payload.messageId,
+      chatId: payload.chatId,
+      senderId: payload.senderId,
+      text: payload.text,
+      createdAt: payload.createdAt,
+    });
 
-    // Also emit directly to receiver if they're online but not in the room
-    const receiverSockets = this.userSockets.get(payload.receiverId);
+    // Also emit directly to receivers if they're online but not in the room
+    for (const receiverId of payload.receiverIds) {
+      if (receiverId === payload.senderId) continue;
 
-    if (receiverSockets) {
-      for (const socketId of receiverSockets) {
-        const socket = this.server.sockets.sockets.get(socketId);
+      const receiverSockets = this.userSockets.get(receiverId);
 
-        if (
-          socket &&
-          !socket.rooms.has(`conversation:${payload.conversationId}`)
-        ) {
-          socket.emit(SocketEvents.NEW_MESSAGE, {
-            _id: payload.messageId,
-            conversationId: payload.conversationId,
-            senderId: payload.senderId,
-            text: payload.text,
-            createdAt: payload.createdAt,
-          });
+      if (receiverSockets) {
+        for (const socketId of receiverSockets) {
+          const socket = this.server.sockets.sockets.get(socketId);
+
+          if (socket && !socket.rooms.has(`chat:${payload.chatId}`)) {
+            socket.emit(SocketEvents.NEW_MESSAGE, {
+              _id: payload.messageId,
+              chatId: payload.chatId,
+              senderId: payload.senderId,
+              text: payload.text,
+              createdAt: payload.createdAt,
+            });
+          }
         }
       }
     }

@@ -2,6 +2,8 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   RedisChannels,
+  RedisChatDeletedPayload,
+  RedisMessageDeletedPayload,
   RedisNewMessagePayload,
   RedisUserStatusPayload,
   RedisUserTypingPayload,
@@ -12,7 +14,9 @@ import { PinoLogger } from 'nestjs-pino';
 type RedisPayload =
   | RedisNewMessagePayload
   | RedisUserStatusPayload
-  | RedisUserTypingPayload;
+  | RedisUserTypingPayload
+  | RedisMessageDeletedPayload
+  | RedisChatDeletedPayload;
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
