@@ -24,11 +24,14 @@
     "paths": {
       "@shared/*": ["../shared/*"],
       "@shared": ["../shared/index.ts"],
+      "@decorators/*": ["./src/decorators/*"],
+      "@guards/*": ["./src/guards/*"],
       "@auth/*": ["./src/auth/*"],
       "@users/*": ["./src/users/*"],
       "@chat/*": ["./src/chat/*"],
       "@common/*": ["./src/common/*"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/metadata.ts"]
 }
