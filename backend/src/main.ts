@@ -35,9 +35,5 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 }
 
-if (require.main === module) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('tsconfig-paths/register');
-  // eslint-disable-next-line unicorn/prefer-top-level-await
-  void bootstrap();
-}
+// eslint-disable-next-line unicorn/prefer-top-level-await
+void bootstrap();

@@ -17,7 +17,7 @@ export class User {
   @Prop({ default: '' })
   avatar!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   refreshToken!: string | null;
 
   createdAt?: Date;

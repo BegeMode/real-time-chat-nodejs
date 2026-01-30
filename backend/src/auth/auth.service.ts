@@ -4,6 +4,7 @@ import { IAuthResponseWithRefresh } from '@auth/types/auth-response-with-refresh
 import {
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +20,10 @@ interface IJwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name, {
+    timestamp: true,
+  });
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -55,6 +60,8 @@ export class AuthService {
       hashedRefreshToken,
     );
 
+    this.logger.debug(`User ${user.email} registered successfully`);
+
     return {
       user: this.usersService.toUserResponse(user),
       accessToken: tokens.accessToken,
@@ -88,6 +95,8 @@ export class AuthService {
       user._id.toString(),
       hashedRefreshToken,
     );
+
+    this.logger.debug(`User ${user.email} logged in successfully`);
 
     return {
       user: this.usersService.toUserResponse(user),
