@@ -1,0 +1,187 @@
+/**
+ * Design System Variables
+ * All colors, typography, spacing, and other design tokens
+ */
+
+:root {
+	/* ========================================
+	 * Colors
+	 * ======================================== */
+
+	/* Primary */
+	--color-primary: #007bff;
+	--color-primary-hover: #0056b3;
+	--color-primary-light: #e7f1ff;
+
+	/* Success */
+	--color-success: #28a745;
+	--color-success-hover: #218838;
+
+	/* Danger / Error */
+	--color-danger: #dc3545;
+	--color-danger-hover: #c82333;
+	--color-danger-light: #f8d7da;
+	--color-danger-text: #721c24;
+
+	/* Neutral / Gray scale */
+	--color-white: #ffffff;
+	--color-gray-50: #f5f5f5;
+	--color-gray-100: #eeeeee;
+	--color-gray-200: #dddddd;
+	--color-gray-300: #cccccc;
+	--color-gray-400: #999999;
+	--color-gray-500: #666666;
+	--color-gray-600: #555555;
+	--color-gray-700: #333333;
+	--color-gray-800: #222222;
+	--color-gray-900: #111111;
+	--color-black: #000000;
+
+	/* Text colors */
+	--color-text-primary: var(--color-gray-700);
+	--color-text-secondary: var(--color-gray-500);
+	--color-text-muted: var(--color-gray-400);
+	--color-text-inverse: var(--color-white);
+
+	/* Background colors */
+	--color-bg-page: var(--color-gray-50);
+	--color-bg-card: var(--color-white);
+	--color-bg-input: var(--color-white);
+	--color-bg-disabled: var(--color-gray-50);
+
+	/* Border colors */
+	--color-border: var(--color-gray-200);
+	--color-border-focus: var(--color-primary);
+	--color-border-error: var(--color-danger);
+
+	/* ========================================
+	 * Typography
+	 * ======================================== */
+
+	/* Font families */
+	--font-family-base:
+		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+		'Helvetica Neue', sans-serif;
+	--font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+
+	/* Font sizes */
+	--font-size-xs: 0.75rem; /* 12px */
+	--font-size-sm: 0.875rem; /* 14px */
+	--font-size-base: 1rem; /* 16px */
+	--font-size-lg: 1.125rem; /* 18px */
+	--font-size-xl: 1.25rem; /* 20px */
+	--font-size-2xl: 1.5rem; /* 24px */
+	--font-size-3xl: 1.75rem; /* 28px */
+	--font-size-4xl: 2rem; /* 32px */
+
+	/* Font weights */
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	/* Line heights */
+	--line-height-tight: 1.25;
+	--line-height-base: 1.5;
+	--line-height-relaxed: 1.75;
+
+	/* ========================================
+	 * Spacing
+	 * ======================================== */
+
+	--spacing-0: 0;
+	--spacing-1: 0.25rem; /* 4px */
+	--spacing-2: 0.5rem; /* 8px */
+	--spacing-3: 0.75rem; /* 12px */
+	--spacing-4: 1rem; /* 16px */
+	--spacing-5: 1.25rem; /* 20px */
+	--spacing-6: 1.5rem; /* 24px */
+	--spacing-8: 2rem; /* 32px */
+	--spacing-10: 2.5rem; /* 40px */
+	--spacing-12: 3rem; /* 48px */
+
+	/* ========================================
+	 * Border radius
+	 * ======================================== */
+
+	--radius-sm: 2px;
+	--radius-base: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--radius-xl: 12px;
+	--radius-full: 9999px;
+
+	/* ========================================
+	 * Shadows
+	 * ======================================== */
+
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--shadow-base: 0 2px 10px rgba(0, 0, 0, 0.1);
+	--shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+	--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+	/* ========================================
+	 * Transitions
+	 * ======================================== */
+
+	--transition-fast: 0.15s ease;
+	--transition-base: 0.2s ease;
+	--transition-slow: 0.3s ease;
+
+	/* ========================================
+	 * Z-index layers
+	 * ======================================== */
+
+	--z-dropdown: 100;
+	--z-sticky: 200;
+	--z-modal-backdrop: 300;
+	--z-modal: 400;
+	--z-toast: 500;
+
+	/* ========================================
+	 * Layout
+	 * ======================================== */
+
+	--max-width-card: 400px;
+	--max-width-content: 800px;
+	--max-width-wide: 1200px;
+
+	/* Header */
+	--header-height: 60px;
+}
+
+/* ========================================
+ * Global reset and base styles
+ * ======================================== */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	font-size: 1rem;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body {
+	font-family: var(--font-family-base);
+	font-size: var(--font-size-base);
+	line-height: var(--line-height-base);
+	color: var(--color-text-primary);
+	background-color: var(--color-bg-page);
+}
+
+a {
+	color: var(--color-primary);
+	text-decoration: none;
+	transition: color var(--transition-fast);
+}
+
+a:hover {
+	text-decoration: underline;
+}

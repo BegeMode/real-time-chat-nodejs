@@ -1,4 +1,4 @@
-import { IMessage } from "@shared/message";
+import type { IMessage } from "@shared/message";
 
 export interface IChat {
   _id: string;
