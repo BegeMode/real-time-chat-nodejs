@@ -1,3 +1,4 @@
+import type { IJwtPayload } from '@app-types/jwt-payload.js';
 import type { LoginDto } from '@auth/dto/login.dto.js';
 import type { RegisterDto } from '@auth/dto/register.dto.js';
 import { IAuthResponseWithRefresh } from '@auth/types/auth-response-with-refresh.js';
@@ -12,11 +13,6 @@ import { JwtService } from '@nestjs/jwt';
 import type { UserDocument } from '@users/models/user.js';
 import { UsersService } from '@users/users.service.js';
 import * as bcrypt from 'bcrypt';
-
-interface IJwtPayload {
-  sub: string;
-  email: string;
-}
 
 @Injectable()
 export class AuthService {

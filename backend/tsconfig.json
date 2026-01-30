@@ -26,10 +26,12 @@
       "@shared": ["../shared/index.ts"],
       "@decorators/*": ["./src/decorators/*"],
       "@guards/*": ["./src/guards/*"],
+      "@app-types/*": ["./src/types/*"],
       "@auth/*": ["./src/auth/*"],
       "@users/*": ["./src/users/*"],
       "@chat/*": ["./src/chat/*"],
-      "@common/*": ["./src/common/*"]
+      "@common/*": ["./src/common/*"],
+      "@socket-gateway/*": ["./src/socket-gateway/*"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],

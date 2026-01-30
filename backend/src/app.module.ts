@@ -2,6 +2,7 @@ import { AuthModule } from '@auth/auth.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { SocketGatewayModule } from '@socket-gateway/socket-gateway.module.js';
 import { UsersModule } from '@users/users.module.js';
 import { LoggerModule } from 'nestjs-pino';
 
@@ -42,6 +43,7 @@ import { AppService } from './app.service.js';
     }),
     AuthModule,
     UsersModule,
+    SocketGatewayModule,
   ],
   controllers: [AppController],
   providers: [AppService],
