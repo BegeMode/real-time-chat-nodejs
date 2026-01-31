@@ -41,6 +41,7 @@
 		"vitest-browser-svelte": "^2.0.2"
 	},
 	"dependencies": {
-		"axios": "^1.13.4"
+		"axios": "^1.13.4",
+		"socket.io-client": "^4.8.3"
 	}
 }

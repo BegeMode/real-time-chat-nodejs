@@ -36,8 +36,8 @@ services:
   # API Service (REST, Auth, DB logic)
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: chat-app-api
     ports:
       - "3000:3000"
@@ -68,8 +68,8 @@ services:
   # WebSocket Gateway Service
   websockets:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: chat-app-websockets
     ports:
       - "3001:3001"

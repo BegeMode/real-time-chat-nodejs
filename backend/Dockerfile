@@ -1,40 +1,47 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy shared and build it
+COPY shared ./shared
+RUN cd shared && yarn install && yarn build
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN npm run build
+# Copy backend and build it
+COPY backend ./backend
+RUN cd backend && yarn install && yarn build
 
 # Production stage
 FROM node:20-alpine AS production
 
-WORKDIR /app
+# Install libc6-compat also for production just in case some native deps need it
+RUN apk add --no-cache libc6-compat
 
-# Copy package files
-COPY package*.json ./
+WORKDIR /app/backend
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Copy backend build artifacts
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/package.json /app/backend/yarn.lock /app/backend/tsconfig.json ./
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy shared folder (both source for tsconfig-paths and dist for execution)
+# We copy everything from shared to avoid path resolution issues
+COPY --from=builder /app/shared ../shared
+
+# Move built shared files to the base of shared so they match the imports
+# e.g. @shared/index.js -> /app/shared/index.js
+RUN cp -r ../shared/dist/* ../shared/ && rm -rf ../shared/dist
+
+# Install production dependencies
+RUN yarn install --production --frozen-lockfile
 
 # Environment variables
 ENV NODE_ENV=production
 ENV SERVICE_TYPE=ALL
 ENV PORT=3000
 
-# Expose port (will be overridden by docker-compose)
+# Expose port
 EXPOSE 3000
 
 # Health check

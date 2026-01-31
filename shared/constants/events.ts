@@ -4,7 +4,7 @@
  */
 export enum SocketEvents {
   // Connection events
-  CONNECTION = 'connection',
+  CONNECT = 'connect',
   DISCONNECT = 'disconnect',
   CONNECT_ERROR = 'connect_error',
 

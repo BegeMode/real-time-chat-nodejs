@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { authStore, isAuthenticated, currentUser } from '$lib/stores/auth';
+	import { authStore, isAuthenticated, currentUser, socketStore } from '$lib';
 	import { authApi } from '$lib/api/auth';
 
 	let user = $derived($currentUser);
 	let authenticated = $derived($isAuthenticated);
+	let isSocketConnected = $derived($socketStore.isConnected);
 
 	// Redirect to login if not authorized
 	onMount(() => {
@@ -35,6 +36,10 @@
 		<header class="app-header">
 			<h1>RealTime Chat</h1>
 			<div class="user-info">
+				<div class="socket-status" class:connected={isSocketConnected}>
+					<span class="status-dot"></span>
+					<span class="status-text">{isSocketConnected ? 'Connected' : 'Disconnected'}</span>
+				</div>
 				<span class="username">{user.username}</span>
 				<button class="btn-logout" onclick={handleLogout}>Logout</button>
 			</div>
@@ -105,6 +110,29 @@
 	.btn-logout:hover {
 		background: var(--color-danger);
 		color: var(--color-text-inverse);
+	}
+
+	.socket-status {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-3);
+		background: var(--color-bg-page);
+		border-radius: var(--radius-full);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color-danger);
+	}
+
+	.socket-status.connected .status-dot {
+		background: var(--color-success);
+		box-shadow: 0 0 8px rgba(var(--color-success-rgb), 0.4);
 	}
 
 	.app-main {

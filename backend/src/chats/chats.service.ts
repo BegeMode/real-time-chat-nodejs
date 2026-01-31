@@ -1,7 +1,7 @@
 import { CreateMessageDto } from '@chats/dto/create-message.dto.js';
 import { GetMessagesQueryDto } from '@chats/dto/get-messages-query.dto.js';
-import { ChatDocument, ChatModel } from '@chats/models/chat.js';
-import { MessageDocument, MessageModel } from '@chats/models/message.js';
+import { ChatDocument } from '@chats/models/chat.js';
+import { MessageDocument } from '@chats/models/message.js';
 import {
   BadRequestException,
   ForbiddenException,
@@ -24,9 +24,9 @@ import { Model, Types } from 'mongoose';
 export class ChatsService {
   private readonly logger = new Logger(ChatsService.name, { timestamp: true });
   constructor(
-    @InjectModel(MessageModel.name)
+    @InjectModel('Message')
     private readonly messageModel: Model<MessageDocument>,
-    @InjectModel(ChatModel.name)
+    @InjectModel('Chat')
     private readonly chatModel: Model<ChatDocument>,
     private readonly pubSubService: PubSubService,
   ) {}

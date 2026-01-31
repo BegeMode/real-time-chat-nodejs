@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { IUser } from '@shared/index';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import { socketStore } from './socket';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
 
@@ -46,6 +47,8 @@ function createAuthStore() {
 				accessToken,
 				error: null
 			}));
+			// Connect socket after auth
+			socketStore.connect();
 		},
 
 		/**
@@ -59,6 +62,8 @@ function createAuthStore() {
 				...state,
 				accessToken
 			}));
+			// Reconnect or update socket connection if needed
+			socketStore.connect();
 		},
 
 		/**
@@ -70,6 +75,8 @@ function createAuthStore() {
 				user,
 				error: null
 			}));
+			// Connect socket if token exists
+			socketStore.connect();
 		},
 
 		/**
@@ -106,6 +113,8 @@ function createAuthStore() {
 				isLoading: false,
 				error: null
 			});
+			// Disconnect socket on logout
+			socketStore.disconnect();
 		},
 
 		/**

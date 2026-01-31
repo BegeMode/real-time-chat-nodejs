@@ -15,6 +15,7 @@
 
 	/* Success */
 	--color-success: #28a745;
+	--color-success-rgb: 40, 167, 69;
 	--color-success-hover: #218838;
 
 	/* Danger / Error */
