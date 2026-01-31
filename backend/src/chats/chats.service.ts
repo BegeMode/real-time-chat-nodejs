@@ -13,9 +13,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import {
   IPaginatedMessages,
   PubSubChannels,
-  RedisChatDeletedPayload,
-  RedisMessageDeletedPayload,
-  RedisNewMessagePayload,
+  PubSubChatDeletedPayload,
+  PubSubMessageDeletedPayload,
+  PubSubNewMessagePayload,
 } from '@shared/index.js';
 import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { Model, Types } from 'mongoose';
@@ -74,8 +74,8 @@ export class ChatsService {
       `Message created: ${message._id.toString()} in chat ${chatId}`,
     );
 
-    // Publish to Redis for Gateway to broadcast
-    const redisPayload: RedisNewMessagePayload = {
+    // Publish to Pub/Sub for Gateway to broadcast
+    const pubSubPayload: PubSubNewMessagePayload = {
       chatId,
       messageId: message._id.toString(),
       senderId,
@@ -84,7 +84,7 @@ export class ChatsService {
       createdAt: message.createdAt.toISOString(),
     };
 
-    await this.pubSubService.publish(PubSubChannels.NEW_MESSAGE, redisPayload);
+    await this.pubSubService.publish(PubSubChannels.NEW_MESSAGE, pubSubPayload);
 
     return message;
   }
@@ -262,8 +262,8 @@ export class ChatsService {
         });
       }
 
-      // Publish to Redis to notify others
-      const redisPayload: RedisMessageDeletedPayload = {
+      // Publish to Pub/Sub to notify others
+      const pubSubPayload: PubSubMessageDeletedPayload = {
         messageId,
         chatId,
         forEveryone: true,
@@ -271,7 +271,7 @@ export class ChatsService {
 
       await this.pubSubService.publish(
         PubSubChannels.MESSAGE_DELETED,
-        redisPayload,
+        pubSubPayload,
       );
     } else {
       // Delete only for the current user
@@ -287,8 +287,8 @@ export class ChatsService {
         throw new BadRequestException('User is not a participant of this chat');
       }
 
-      // Publish to Redis (to notify user's other devices/sessions)
-      const redisPayload: RedisMessageDeletedPayload = {
+      // Publish to Pub/Sub (to notify user's other devices/sessions)
+      const pubSubPayload: PubSubMessageDeletedPayload = {
         messageId,
         chatId,
         userId,
@@ -297,7 +297,7 @@ export class ChatsService {
 
       await this.pubSubService.publish(
         PubSubChannels.MESSAGE_DELETED,
-        redisPayload,
+        pubSubPayload,
       );
     }
   }
@@ -320,12 +320,15 @@ export class ChatsService {
       );
     }
 
-    // Publish to Redis
-    const redisPayload: RedisChatDeletedPayload = {
+    // Publish to Pub/Sub
+    const pubSubPayload: PubSubChatDeletedPayload = {
       chatId,
       userId,
     };
 
-    await this.pubSubService.publish(PubSubChannels.CHAT_DELETED, redisPayload);
+    await this.pubSubService.publish(
+      PubSubChannels.CHAT_DELETED,
+      pubSubPayload,
+    );
   }
 }

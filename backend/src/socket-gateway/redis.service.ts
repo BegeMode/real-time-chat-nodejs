@@ -2,11 +2,11 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   PubSubChannels,
-  RedisChatDeletedPayload,
-  RedisMessageDeletedPayload,
-  RedisNewMessagePayload,
-  RedisUserStatusPayload,
-  RedisUserTypingPayload,
+  PubSubChatDeletedPayload,
+  PubSubMessageDeletedPayload,
+  PubSubNewMessagePayload,
+  PubSubUserStatusPayload,
+  PubSubUserTypingPayload,
 } from '@shared/index.js';
 import { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
@@ -14,11 +14,11 @@ import { PinoLogger } from 'nestjs-pino';
 import { PubSubService } from './pub-sub.service.js';
 
 type RedisPayload =
-  | RedisNewMessagePayload
-  | RedisUserStatusPayload
-  | RedisUserTypingPayload
-  | RedisMessageDeletedPayload
-  | RedisChatDeletedPayload;
+  | PubSubNewMessagePayload
+  | PubSubUserStatusPayload
+  | PubSubUserTypingPayload
+  | PubSubMessageDeletedPayload
+  | PubSubChatDeletedPayload;
 
 @Injectable()
 export class RedisService

@@ -6,6 +6,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { RedisService } from '@socket-gateway/redis.service.js';
 import { SocketGatewayService } from '@socket-gateway/socket.service.js';
+import { SocketNotifierService } from '@socket-gateway/socket-notifier.service.js';
+import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
 
 @Module({
   imports: [
@@ -22,12 +24,17 @@ import { SocketGatewayService } from '@socket-gateway/socket.service.js';
   ],
   providers: [
     SocketGatewayService,
+    SocketNotifierService,
+    {
+      provide: SocketTransport,
+      useExisting: SocketGatewayService,
+    },
     {
       provide: PubSubService,
       useClass: RedisService,
     },
     SocketAuthGuard,
   ],
-  exports: [PubSubService],
+  exports: [PubSubService, SocketTransport],
 })
 export class SocketGatewayModule {}

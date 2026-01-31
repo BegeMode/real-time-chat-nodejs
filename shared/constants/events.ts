@@ -27,6 +27,10 @@ export enum SocketEvents {
   TYPING_START = 'typingStart',
   TYPING_STOP = 'typingStop',
 
+  // Deletion events
+  MESSAGE_DELETED = 'messageDeleted',
+  CHAT_DELETED = 'chatDeleted',
+
   // Error events
   ERROR = 'error',
   UNAUTHORIZED = 'unauthorized',
@@ -53,9 +57,9 @@ export enum PubSubChannels {
 }
 
 /**
- * Redis Pub/Sub Message Payload Types
+ * Generic Pub/Sub Message Payload Types
  */
-export interface RedisNewMessagePayload {
+export interface PubSubNewMessagePayload {
   chatId: string;
   messageId: string;
   senderId: string;
@@ -64,25 +68,25 @@ export interface RedisNewMessagePayload {
   createdAt: string;
 }
 
-export interface RedisUserStatusPayload {
+export interface PubSubUserStatusPayload {
   userId: string;
-  status: 'online' | 'offline';
+  isOnline: boolean;
 }
 
-export interface RedisUserTypingPayload {
+export interface PubSubUserTypingPayload {
   userId: string;
   chatId: string;
   isTyping: boolean;
 }
 
-export interface RedisMessageDeletedPayload {
+export interface PubSubMessageDeletedPayload {
   messageId: string;
   chatId: string;
   userId?: string;
   forEveryone: boolean;
 }
 
-export interface RedisChatDeletedPayload {
+export interface PubSubChatDeletedPayload {
   chatId: string;
   userId: string;
 }

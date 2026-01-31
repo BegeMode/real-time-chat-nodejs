@@ -1,6 +1,5 @@
 import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
 import type { IJoinRoomPayload } from '@app-types/join-room-payload.js';
-import type { ISendMessagePayload } from '@app-types/send-message-payload.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { Logger, UseGuards } from '@nestjs/common';
 import {
@@ -13,12 +12,8 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import {
-  PubSubChannels,
-  RedisNewMessagePayload,
-  SocketEvents,
-} from '@shared/index.js';
-import { PubSubService } from '@socket-gateway/pub-sub.service.js';
+import { SocketEvents } from '@shared/index.js';
+import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
@@ -29,6 +24,7 @@ import { Server, Socket } from 'socket.io';
   namespace: '/',
 })
 export class SocketGatewayService
+  extends SocketTransport
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server!: Server;
@@ -40,22 +36,64 @@ export class SocketGatewayService
     timestamp: true,
   });
 
-  constructor(private readonly pubSubService: PubSubService) {}
+  // --- SocketTransport Implementation ---
+
+  emitToChannel(channel: string, event: SocketEvents, payload: unknown): void {
+    this.server.to(channel).emit(event, payload);
+    this.logger.debug(`Emitted event ${event} to channel ${channel}`);
+  }
+
+  emitToUser(userId: string, event: SocketEvents, payload: unknown): void {
+    const sockets = this.userSockets.get(userId);
+
+    if (sockets) {
+      for (const socketId of sockets) {
+        this.server.to(socketId).emit(event, payload);
+      }
+
+      this.logger.debug(`Emitted event ${event} to user ${userId}`);
+    }
+  }
+
+  joinChannel(client: Socket, channel: string): void {
+    void client.join(channel);
+    this.logger.log(`Client ${client.id} joined channel ${channel}`);
+  }
+
+  leaveChannel(client: Socket, channel: string): void {
+    void client.leave(channel);
+    this.logger.log(`Client ${client.id} left channel ${channel}`);
+  }
+
+  isUserInChannel(userId: string, channel: string): boolean {
+    const sockets = this.userSockets.get(userId);
+    if (!sockets) return false;
+
+    for (const socketId of sockets) {
+      const socket = this.server.sockets.sockets.get(socketId);
+      if (socket?.rooms.has(channel)) return true;
+    }
+
+    return false;
+  }
+
+  getConnectedUserIds(): string[] {
+    return [...this.userSockets.keys()];
+  }
+
+  broadcast(event: SocketEvents, payload: unknown): void {
+    this.server.emit(event, payload);
+  }
+
+  // --- NestJS Gateway Lifecycle & Handlers ---
 
   afterInit(): void {
     this.logger.log('Socket Gateway initialized');
-
-    // Subscribe to pub/sub new message events
-    this.pubSubService.onMessage(PubSubChannels.NEW_MESSAGE, (payload) => {
-      this.handleRedisNewMessage(payload as RedisNewMessagePayload);
-    });
   }
 
   handleConnection(client: Socket): void {
     this.logger.log(`Client attempting to connect: ${client.id}`);
 
-    // The SocketAuthGuard is not automatically applied on connection
-    // We need to manually verify the token here
     try {
       const token = this.extractToken(client);
 
@@ -69,8 +107,6 @@ export class SocketGatewayService
         return;
       }
 
-      // Token validation will happen in the guard for message handlers
-      // For now, we just log the connection
       this.logger.log(`Client connected: ${client.id}`);
     } catch (error: unknown) {
       this.logger.error(
@@ -84,7 +120,6 @@ export class SocketGatewayService
     const authenticatedClient = client as IAuthenticatedSocket;
 
     if (authenticatedClient.userId) {
-      // Remove socket from user's socket set
       const userSocketSet = this.userSockets.get(authenticatedClient.userId);
 
       if (userSocketSet) {
@@ -92,8 +127,7 @@ export class SocketGatewayService
 
         if (userSocketSet.size === 0) {
           this.userSockets.delete(authenticatedClient.userId);
-          // Broadcast user offline status
-          this.server.emit(SocketEvents.USER_OFFLINE, {
+          this.broadcast(SocketEvents.USER_OFFLINE, {
             userId: authenticatedClient.userId,
           });
         }
@@ -111,21 +145,18 @@ export class SocketGatewayService
   ): void {
     const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
+    const channelName = `chat:${chatId}`;
 
-    // Register user socket mapping
     if (!this.userSockets.has(authClient.userId)) {
       this.userSockets.set(authClient.userId, new Set());
-      // Broadcast user online status (only on first socket)
-      this.server.emit(SocketEvents.USER_ONLINE, { userId: authClient.userId });
+      this.broadcast(SocketEvents.USER_ONLINE, { userId: authClient.userId });
     }
 
     this.userSockets.get(authClient.userId)?.add(client.id);
-
-    // Join the chat room
-    void client.join(`chat:${chatId}`);
+    this.joinChannel(client, channelName);
 
     client.emit(SocketEvents.ROOM_JOINED, { chatId });
-    this.logger.log(`User ${authClient.userId} joined room: chat:${chatId}`);
+    this.logger.log(`User ${authClient.userId} joined channel: ${channelName}`);
   }
 
   @UseGuards(SocketAuthGuard)
@@ -136,9 +167,10 @@ export class SocketGatewayService
   ): void {
     const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
+    const channelName = `chat:${chatId}`;
 
-    void client.leave(`chat:${chatId}`);
-    this.logger.log(`User ${authClient.userId} left room: chat:${chatId}`);
+    this.leaveChannel(client, channelName);
+    this.logger.log(`User ${authClient.userId} left channel: ${channelName}`);
   }
 
   @UseGuards(SocketAuthGuard)
@@ -150,7 +182,6 @@ export class SocketGatewayService
     const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
 
-    // Broadcast to room except sender
     client.to(`chat:${chatId}`).emit(SocketEvents.TYPING_START, {
       userId: authClient.userId,
       chatId,
@@ -170,65 +201,6 @@ export class SocketGatewayService
       userId: authClient.userId,
       chatId,
     });
-  }
-
-  @UseGuards(SocketAuthGuard)
-  @SubscribeMessage(SocketEvents.SEND_MESSAGE)
-  handleSendMessage(
-    @MessageBody() _payload: ISendMessagePayload,
-    @ConnectedSocket() client: Socket,
-  ): void {
-    const authClient = client as IAuthenticatedSocket;
-    // This is a fallback - messages should be sent via REST API
-    // But we can emit an event to acknowledge receipt
-    this.logger.warn(
-      `Direct socket message from ${authClient.userId} - should use REST API`,
-    );
-
-    client.emit(SocketEvents.MESSAGE_ERROR, {
-      message: 'Please use REST API to send messages',
-    });
-  }
-
-  /**
-   * Handle new message events from Redis (published by API service)
-   */
-  private handleRedisNewMessage(payload: RedisNewMessagePayload): void {
-    this.logger.log(
-      `Received new message from Redis for chatId: ${payload.chatId}`,
-    );
-
-    // Emit to the chat room
-    this.server.to(`chat:${payload.chatId}`).emit(SocketEvents.NEW_MESSAGE, {
-      _id: payload.messageId,
-      chatId: payload.chatId,
-      senderId: payload.senderId,
-      text: payload.text,
-      createdAt: payload.createdAt,
-    });
-
-    // Also emit directly to receivers if they're online but not in the room
-    for (const receiverId of payload.receiverIds) {
-      if (receiverId === payload.senderId) continue;
-
-      const receiverSockets = this.userSockets.get(receiverId);
-
-      if (receiverSockets) {
-        for (const socketId of receiverSockets) {
-          const socket = this.server.sockets.sockets.get(socketId);
-
-          if (socket && !socket.rooms.has(`chat:${payload.chatId}`)) {
-            socket.emit(SocketEvents.NEW_MESSAGE, {
-              _id: payload.messageId,
-              chatId: payload.chatId,
-              senderId: payload.senderId,
-              text: payload.text,
-              createdAt: payload.createdAt,
-            });
-          }
-        }
-      }
-    }
   }
 
   private extractToken(client: Socket): string | null {
