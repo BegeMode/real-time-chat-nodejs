@@ -3,6 +3,7 @@ import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { RedisService } from '@socket-gateway/redis.service.js';
 import { SocketGatewayService } from '@socket-gateway/socket.service.js';
 
@@ -19,7 +20,14 @@ import { SocketGatewayService } from '@socket-gateway/socket.service.js';
       }),
     }),
   ],
-  providers: [SocketGatewayService, RedisService, SocketAuthGuard],
-  exports: [RedisService],
+  providers: [
+    SocketGatewayService,
+    {
+      provide: PubSubService,
+      useClass: RedisService,
+    },
+    SocketAuthGuard,
+  ],
+  exports: [PubSubService],
 })
 export class SocketGatewayModule {}

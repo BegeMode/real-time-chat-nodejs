@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  RedisChannels,
+  PubSubChannels,
   RedisChatDeletedPayload,
   RedisMessageDeletedPayload,
   RedisNewMessagePayload,
@@ -11,6 +11,8 @@ import {
 import { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
 
+import { PubSubService } from './pub-sub.service.js';
+
 type RedisPayload =
   | RedisNewMessagePayload
   | RedisUserStatusPayload
@@ -19,7 +21,10 @@ type RedisPayload =
   | RedisChatDeletedPayload;
 
 @Injectable()
-export class RedisService implements OnModuleInit, OnModuleDestroy {
+export class RedisService
+  extends PubSubService
+  implements OnModuleInit, OnModuleDestroy
+{
   private publisher!: Redis;
   private subscriber!: Redis;
   private messageHandlers = new Map<string, Set<(payload: unknown) => void>>();
@@ -28,6 +33,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly logger: PinoLogger,
   ) {
+    super();
     this.logger.setContext(RedisService.name);
   }
 
@@ -66,7 +72,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async subscribeToChannels(): Promise<void> {
-    const channels = Object.values(RedisChannels);
+    const channels = Object.values(PubSubChannels);
 
     await this.subscriber.subscribe(...channels);
 
@@ -93,7 +99,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   /**
    * Publish a message to a Redis channel
    */
-  async publish(channel: RedisChannels, payload: RedisPayload): Promise<void> {
+  async publish(channel: PubSubChannels, payload: RedisPayload): Promise<void> {
     await this.publisher.publish(channel, JSON.stringify(payload));
     this.logger.debug(`Published message to channel ${channel}`);
   }
@@ -101,7 +107,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   /**
    * Register a handler for a specific Redis channel
    */
-  onMessage(channel: RedisChannels, handler: (payload: unknown) => void): void {
+  onMessage(
+    channel: PubSubChannels,
+    handler: (payload: unknown) => void,
+  ): void {
     if (!this.messageHandlers.has(channel)) {
       this.messageHandlers.set(channel, new Set());
     }
@@ -115,7 +124,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Remove a handler for a specific Redis channel
    */
   offMessage(
-    channel: RedisChannels,
+    channel: PubSubChannels,
     handler: (payload: unknown) => void,
   ): void {
     this.messageHandlers

@@ -14,11 +14,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import {
-  RedisChannels,
+  PubSubChannels,
   RedisNewMessagePayload,
   SocketEvents,
 } from '@shared/index.js';
-import { RedisService } from '@socket-gateway/redis.service.js';
+import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
@@ -40,13 +40,13 @@ export class SocketGatewayService
     timestamp: true,
   });
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly pubSubService: PubSubService) {}
 
   afterInit(): void {
     this.logger.log('Socket Gateway initialized');
 
-    // Subscribe to Redis new message events
-    this.redisService.onMessage(RedisChannels.NEW_MESSAGE, (payload) => {
+    // Subscribe to pub/sub new message events
+    this.pubSubService.onMessage(PubSubChannels.NEW_MESSAGE, (payload) => {
       this.handleRedisNewMessage(payload as RedisNewMessagePayload);
     });
   }

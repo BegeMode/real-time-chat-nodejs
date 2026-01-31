@@ -12,12 +12,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IPaginatedMessages,
-  RedisChannels,
+  PubSubChannels,
   RedisChatDeletedPayload,
   RedisMessageDeletedPayload,
   RedisNewMessagePayload,
 } from '@shared/index.js';
-import { RedisService } from '@socket-gateway/redis.service.js';
+import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { Model, Types } from 'mongoose';
 
 @Injectable()
@@ -28,7 +28,7 @@ export class ChatsService {
     private readonly messageModel: Model<MessageDocument>,
     @InjectModel(ChatModel.name)
     private readonly chatModel: Model<ChatDocument>,
-    private readonly redisService: RedisService,
+    private readonly pubSubService: PubSubService,
   ) {}
 
   /**
@@ -84,7 +84,7 @@ export class ChatsService {
       createdAt: message.createdAt.toISOString(),
     };
 
-    await this.redisService.publish(RedisChannels.NEW_MESSAGE, redisPayload);
+    await this.pubSubService.publish(PubSubChannels.NEW_MESSAGE, redisPayload);
 
     return message;
   }
@@ -269,8 +269,8 @@ export class ChatsService {
         forEveryone: true,
       };
 
-      await this.redisService.publish(
-        RedisChannels.MESSAGE_DELETED,
+      await this.pubSubService.publish(
+        PubSubChannels.MESSAGE_DELETED,
         redisPayload,
       );
     } else {
@@ -295,8 +295,8 @@ export class ChatsService {
         forEveryone: false,
       };
 
-      await this.redisService.publish(
-        RedisChannels.MESSAGE_DELETED,
+      await this.pubSubService.publish(
+        PubSubChannels.MESSAGE_DELETED,
         redisPayload,
       );
     }
@@ -326,6 +326,6 @@ export class ChatsService {
       userId,
     };
 
-    await this.redisService.publish(RedisChannels.CHAT_DELETED, redisPayload);
+    await this.pubSubService.publish(PubSubChannels.CHAT_DELETED, redisPayload);
   }
 }

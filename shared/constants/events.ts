@@ -33,10 +33,10 @@ export enum SocketEvents {
 }
 
 /**
- * Redis Channel Names
- * Used for pub/sub communication between API and Gateway services
+ * Pub/Sub Channel Names
+ * Used for inter-service communication
  */
-export enum RedisChannels {
+export enum PubSubChannels {
   // Message channels
   NEW_MESSAGE = 'chat:new_message',
   MESSAGE_UPDATED = 'chat:message_updated',
