@@ -251,7 +251,7 @@ export class ChatsService {
       // If this was the last message, update the chat's lastMessage
       const chat = await this.chatModel.findById(chatId);
 
-      if (chat && chat.lastMessage?.toString() === messageId) {
+      if (chat?.lastMessage?.toString() === messageId) {
         const lastMsg = await this.messageModel
           .findOne({ chatId: new Types.ObjectId(chatId) })
           // eslint-disable-next-line unicorn/no-array-sort
@@ -263,16 +263,19 @@ export class ChatsService {
       }
 
       // Publish to Pub/Sub to notify others
-      const pubSubPayload: PubSubMessageDeletedPayload = {
-        messageId,
-        chatId,
-        forEveryone: true,
-      };
+      if (chat) {
+        const pubSubPayload: PubSubMessageDeletedPayload = {
+          messageId,
+          chatId,
+          forEveryone: true,
+          receiverIds: chat.members.map((m) => m.user.toString()),
+        };
 
-      await this.pubSubService.publish(
-        PubSubChannels.MESSAGE_DELETED,
-        pubSubPayload,
-      );
+        await this.pubSubService.publish(
+          PubSubChannels.MESSAGE_DELETED,
+          pubSubPayload,
+        );
+      }
     } else {
       // Delete only for the current user
       const result = await this.messageModel.updateOne(
@@ -293,6 +296,7 @@ export class ChatsService {
         chatId,
         userId,
         forEveryone: false,
+        receiverIds: [userId], // Only for this specific user
       };
 
       await this.pubSubService.publish(
@@ -324,6 +328,7 @@ export class ChatsService {
     const pubSubPayload: PubSubChatDeletedPayload = {
       chatId,
       userId,
+      receiverIds: [userId],
     };
 
     await this.pubSubService.publish(

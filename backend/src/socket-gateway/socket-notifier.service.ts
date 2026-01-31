@@ -50,7 +50,6 @@ export class SocketNotifierService implements OnModuleInit {
   }
 
   private handleNewMessage(payload: PubSubNewMessagePayload): void {
-    const channelName = `chat:${payload.chatId}`;
     const socketPayload = {
       _id: payload.messageId,
       chatId: payload.chatId,
@@ -59,35 +58,25 @@ export class SocketNotifierService implements OnModuleInit {
       createdAt: payload.createdAt,
     };
 
-    // Emit to the chat channel (all users currently looking at this chat)
-    this.transport.emitToChannel(
-      channelName,
+    // Emit to all participants (their personal channels)
+    this.transport.emitToUsers(
+      payload.receiverIds,
       SocketEvents.NEW_MESSAGE,
       socketPayload,
     );
-
-    // Also emit directly to receivers if they are online but not focused on this channel
-    for (const receiverId of payload.receiverIds) {
-      if (receiverId === payload.senderId) continue;
-
-      if (!this.transport.isUserInChannel(receiverId, channelName)) {
-        this.transport.emitToUser(
-          receiverId,
-          SocketEvents.NEW_MESSAGE,
-          socketPayload,
-        );
-      }
-    }
   }
 
   private handleUserTyping(payload: PubSubUserTypingPayload): void {
-    const channelName = `chat:${payload.chatId}`;
-    // We only broadcast typing to the channel
-    this.transport.emitToChannel(channelName, SocketEvents.TYPING_START, {
-      userId: payload.userId,
-      chatId: payload.chatId,
-      isTyping: payload.isTyping,
-    });
+    // Only send to other participants, not the typer themselves (unless they have other tabs)
+    // Actually, sending to all is safer for multi-tab sync
+    this.transport.emitToUsers(
+      payload.receiverIds,
+      payload.isTyping ? SocketEvents.TYPING_START : SocketEvents.TYPING_STOP,
+      {
+        userId: payload.userId,
+        chatId: payload.chatId,
+      },
+    );
   }
 
   private handleUserStatus(payload: PubSubUserStatusPayload): void {
@@ -98,8 +87,8 @@ export class SocketNotifierService implements OnModuleInit {
   }
 
   private handleMessageDeleted(payload: PubSubMessageDeletedPayload): void {
-    this.transport.emitToChannel(
-      `chat:${payload.chatId}`,
+    this.transport.emitToUsers(
+      payload.receiverIds,
       SocketEvents.MESSAGE_DELETED,
       {
         messageId: payload.messageId,
@@ -109,12 +98,8 @@ export class SocketNotifierService implements OnModuleInit {
   }
 
   private handleChatDeleted(payload: PubSubChatDeletedPayload): void {
-    this.transport.emitToChannel(
-      `chat:${payload.chatId}`,
-      SocketEvents.CHAT_DELETED,
-      {
-        chatId: payload.chatId,
-      },
-    );
+    this.transport.emitToUsers(payload.receiverIds, SocketEvents.CHAT_DELETED, {
+      chatId: payload.chatId,
+    });
   }
 }

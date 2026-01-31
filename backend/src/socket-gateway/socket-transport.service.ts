@@ -2,16 +2,16 @@ import type { SocketEvents } from '@shared/index.js';
 
 export abstract class SocketTransport {
   /**
-   * Send a message to a specific channel (formerly room)
+   * Send a message to specific users on all their devices/sockets
    */
-  abstract emitToChannel(
-    channel: string,
+  abstract emitToUsers(
+    userIds: string[],
     event: SocketEvents,
     payload: unknown,
   ): void;
 
   /**
-   * Send a message to a specific user on all their devices/sockets
+   * Send a message to a single user on all their devices/sockets
    */
   abstract emitToUser(
     userId: string,
@@ -20,27 +20,17 @@ export abstract class SocketTransport {
   ): void;
 
   /**
-   * Subscribe a client to a channel
-   */
-  abstract joinChannel(client: unknown, channel: string): void;
-
-  /**
-   * Unsubscribe a client from a channel
-   */
-  abstract leaveChannel(client: unknown, channel: string): void;
-
-  /**
-   * Check if a user is in a channel
-   */
-  abstract isUserInChannel(userId: string, channel: string): boolean;
-
-  /**
-   * Get a list of all connected user IDs
+   * Get a list of all currently connected user IDs
    */
   abstract getConnectedUserIds(): string[];
 
   /**
-   * Broadcast a message to all connected users
+   * Check if a specific user is currently online
+   */
+  abstract isUserOnline(userId: string): boolean;
+
+  /**
+   * Broadcast a message to ALL connected users
    */
   abstract broadcast(event: SocketEvents, payload: unknown): void;
 }

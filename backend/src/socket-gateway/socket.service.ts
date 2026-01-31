@@ -1,5 +1,4 @@
 import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
-import type { IJoinRoomPayload } from '@app-types/join-room-payload.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { Logger, UseGuards } from '@nestjs/common';
 import {
@@ -38,47 +37,23 @@ export class SocketGatewayService
 
   // --- SocketTransport Implementation ---
 
-  emitToChannel(channel: string, event: SocketEvents, payload: unknown): void {
-    this.server.to(channel).emit(event, payload);
-    this.logger.debug(`Emitted event ${event} to channel ${channel}`);
+  emitToUsers(userIds: string[], event: SocketEvents, payload: unknown): void {
+    const rooms = userIds.map((id) => `user:${id}`);
+    this.server.to(rooms).emit(event, payload);
+    this.logger.debug(`Emitted event ${event} to users: ${userIds.join(', ')}`);
   }
 
   emitToUser(userId: string, event: SocketEvents, payload: unknown): void {
-    const sockets = this.userSockets.get(userId);
-
-    if (sockets) {
-      for (const socketId of sockets) {
-        this.server.to(socketId).emit(event, payload);
-      }
-
-      this.logger.debug(`Emitted event ${event} to user ${userId}`);
-    }
-  }
-
-  joinChannel(client: Socket, channel: string): void {
-    void client.join(channel);
-    this.logger.log(`Client ${client.id} joined channel ${channel}`);
-  }
-
-  leaveChannel(client: Socket, channel: string): void {
-    void client.leave(channel);
-    this.logger.log(`Client ${client.id} left channel ${channel}`);
-  }
-
-  isUserInChannel(userId: string, channel: string): boolean {
-    const sockets = this.userSockets.get(userId);
-    if (!sockets) return false;
-
-    for (const socketId of sockets) {
-      const socket = this.server.sockets.sockets.get(socketId);
-      if (socket?.rooms.has(channel)) return true;
-    }
-
-    return false;
+    this.server.to(`user:${userId}`).emit(event, payload);
+    this.logger.debug(`Emitted event ${event} to user ${userId}`);
   }
 
   getConnectedUserIds(): string[] {
     return [...this.userSockets.keys()];
+  }
+
+  isUserOnline(userId: string): boolean {
+    return this.userSockets.has(userId);
   }
 
   broadcast(event: SocketEvents, payload: unknown): void {
@@ -107,7 +82,23 @@ export class SocketGatewayService
         return;
       }
 
-      this.logger.log(`Client connected: ${client.id}`);
+      // Automatically join personal channel
+      const authenticatedClient = client as IAuthenticatedSocket;
+      const userId = authenticatedClient.userId;
+
+      if (userId) {
+        void client.join(`user:${userId}`);
+
+        if (!this.userSockets.has(userId)) {
+          this.userSockets.set(userId, new Set());
+          this.broadcast(SocketEvents.USER_ONLINE, { userId });
+        }
+        this.userSockets.get(userId)?.add(client.id);
+
+        this.logger.log(
+          `Client connected: ${client.id} (User: ${userId}) joined personal channel user:${userId}`,
+        );
+      }
     } catch (error: unknown) {
       this.logger.error(
         `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -118,18 +109,17 @@ export class SocketGatewayService
 
   handleDisconnect(client: Socket): void {
     const authenticatedClient = client as IAuthenticatedSocket;
+    const userId = authenticatedClient.userId;
 
-    if (authenticatedClient.userId) {
-      const userSocketSet = this.userSockets.get(authenticatedClient.userId);
+    if (userId) {
+      const userSocketSet = this.userSockets.get(userId);
 
       if (userSocketSet) {
         userSocketSet.delete(client.id);
 
         if (userSocketSet.size === 0) {
-          this.userSockets.delete(authenticatedClient.userId);
-          this.broadcast(SocketEvents.USER_OFFLINE, {
-            userId: authenticatedClient.userId,
-          });
+          this.userSockets.delete(userId);
+          this.broadcast(SocketEvents.USER_OFFLINE, { userId });
         }
       }
     }
@@ -138,69 +128,18 @@ export class SocketGatewayService
   }
 
   @UseGuards(SocketAuthGuard)
-  @SubscribeMessage(SocketEvents.JOIN_ROOM)
-  handleJoinRoom(
-    @MessageBody() payload: IJoinRoomPayload,
-    @ConnectedSocket() client: Socket,
-  ): void {
-    const { chatId } = payload;
-    const authClient = client as IAuthenticatedSocket;
-    const channelName = `chat:${chatId}`;
-
-    if (!this.userSockets.has(authClient.userId)) {
-      this.userSockets.set(authClient.userId, new Set());
-      this.broadcast(SocketEvents.USER_ONLINE, { userId: authClient.userId });
-    }
-
-    this.userSockets.get(authClient.userId)?.add(client.id);
-    this.joinChannel(client, channelName);
-
-    client.emit(SocketEvents.ROOM_JOINED, { chatId });
-    this.logger.log(`User ${authClient.userId} joined channel: ${channelName}`);
-  }
-
-  @UseGuards(SocketAuthGuard)
-  @SubscribeMessage(SocketEvents.LEAVE_ROOM)
-  handleLeaveRoom(
-    @MessageBody() payload: IJoinRoomPayload,
-    @ConnectedSocket() client: Socket,
-  ): void {
-    const { chatId } = payload;
-    const authClient = client as IAuthenticatedSocket;
-    const channelName = `chat:${chatId}`;
-
-    this.leaveChannel(client, channelName);
-    this.logger.log(`User ${authClient.userId} left channel: ${channelName}`);
-  }
-
-  @UseGuards(SocketAuthGuard)
   @SubscribeMessage(SocketEvents.TYPING_START)
   handleTypingStart(
-    @MessageBody() payload: IJoinRoomPayload,
+    @MessageBody() payload: { chatId: string },
     @ConnectedSocket() client: Socket,
   ): void {
-    const { chatId } = payload;
     const authClient = client as IAuthenticatedSocket;
 
-    client.to(`chat:${chatId}`).emit(SocketEvents.TYPING_START, {
-      userId: authClient.userId,
-      chatId,
-    });
-  }
-
-  @UseGuards(SocketAuthGuard)
-  @SubscribeMessage(SocketEvents.TYPING_STOP)
-  handleTypingStop(
-    @MessageBody() payload: IJoinRoomPayload,
-    @ConnectedSocket() client: Socket,
-  ): void {
-    const { chatId } = payload;
-    const authClient = client as IAuthenticatedSocket;
-
-    client.to(`chat:${chatId}`).emit(SocketEvents.TYPING_STOP, {
-      userId: authClient.userId,
-      chatId,
-    });
+    // We don't broadcast here directly anymore, we expect the API to handle the logic
+    // OR if you want direct bridge, we could, but let's stick to your architecture
+    this.logger.debug(
+      `User ${authClient.userId} is typing in ${payload.chatId}`,
+    );
   }
 
   private extractToken(client: Socket): string | null {

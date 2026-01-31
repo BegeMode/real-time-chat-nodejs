@@ -77,6 +77,7 @@ export interface PubSubUserTypingPayload {
   userId: string;
   chatId: string;
   isTyping: boolean;
+  receiverIds: string[];
 }
 
 export interface PubSubMessageDeletedPayload {
@@ -84,9 +85,11 @@ export interface PubSubMessageDeletedPayload {
   chatId: string;
   userId?: string;
   forEveryone: boolean;
+  receiverIds: string[];
 }
 
 export interface PubSubChatDeletedPayload {
   chatId: string;
   userId: string;
+  receiverIds: string[];
 }
