@@ -1,6 +1,9 @@
 import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
+import { IJwtPayload } from '@app-types/jwt-payload.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { Logger, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
@@ -35,6 +38,13 @@ export class SocketGatewayService
     timestamp: true,
   });
 
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {
+    super();
+  }
+
   // --- SocketTransport Implementation ---
 
   emitToUsers(userIds: string[], event: SocketEvents, payload: unknown): void {
@@ -66,8 +76,8 @@ export class SocketGatewayService
     this.logger.log('Socket Gateway initialized');
   }
 
-  handleConnection(client: Socket): void {
-    this.logger.log(`Client attempting to connect: ${client.id}`);
+  async handleConnection(client: Socket): Promise<void> {
+    this.logger.debug(`Client attempting to connect: ${client.id}`);
 
     try {
       const token = this.extractToken(client);
@@ -82,27 +92,37 @@ export class SocketGatewayService
         return;
       }
 
-      // Automatically join personal channel
-      const authenticatedClient = client as IAuthenticatedSocket;
-      const userId = authenticatedClient.userId;
+      // Verify token manually during handshake
+      const payload = (await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+      })) satisfies IJwtPayload;
 
-      if (userId) {
-        void client.join(`user:${userId}`);
-
-        if (!this.userSockets.has(userId)) {
-          this.userSockets.set(userId, new Set());
-          this.broadcast(SocketEvents.USER_ONLINE, { userId });
-        }
-        this.userSockets.get(userId)?.add(client.id);
-
-        this.logger.log(
-          `Client connected: ${client.id} (User: ${userId}) joined personal channel user:${userId}`,
-        );
+      if (!payload.sub) {
+        throw new Error('Invalid token payload');
       }
+
+      const userId = payload.sub;
+      const authenticatedClient = client as IAuthenticatedSocket;
+      authenticatedClient.userId = userId;
+
+      // Automatically join personal channel
+      await client.join(`user:${userId}`);
+
+      if (!this.userSockets.has(userId)) {
+        this.userSockets.set(userId, new Set());
+        this.broadcast(SocketEvents.USER_ONLINE, { userId });
+      }
+
+      this.userSockets.get(userId)?.add(client.id);
+
+      this.logger.log(
+        `Client connected and authenticated: ${client.id} (User: ${userId}) joined personal channel user:${userId}`,
+      );
     } catch (error: unknown) {
       this.logger.error(
-        `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Connection authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+      client.emit(SocketEvents.UNAUTHORIZED, { message: 'Invalid token' });
       client.disconnect(true);
     }
   }
