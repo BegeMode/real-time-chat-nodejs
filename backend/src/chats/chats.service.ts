@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
-  IPaginatedMessages,
+  IPaginated,
   PubSubChannels,
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
@@ -96,7 +96,7 @@ export class ChatsService {
     userId: string,
     chatId: string,
     query: GetMessagesQueryDto,
-  ): Promise<IPaginatedMessages<MessageDocument>> {
+  ): Promise<IPaginated<MessageDocument>> {
     // Validate conversation and user access
     const chat = await this.chatModel.findById(chatId);
 
@@ -152,7 +152,7 @@ export class ChatsService {
 
     return {
       // eslint-disable-next-line n/no-unsupported-features/es-syntax
-      messages: messages.toReversed(), // Return in chronological order
+      items: messages.toReversed(), // Return in chronological order
       total,
       page,
       limit,

@@ -35,6 +35,23 @@ export class UsersService {
     return this.userModel.find().select('-password -refreshToken').exec();
   }
 
+  async searchUsers(
+    query: string,
+    excludeUserId: string,
+  ): Promise<UserDocument[]> {
+    return this.userModel
+      .find({
+        _id: { $ne: excludeUserId },
+        $or: [
+          { username: { $regex: query, $options: 'i' } },
+          { email: { $regex: query, $options: 'i' } },
+        ],
+      })
+      .limit(10)
+      .select('-password -refreshToken')
+      .exec();
+  }
+
   async updateRefreshToken(
     userId: string,
     refreshToken: string | null,

@@ -1,5 +1,5 @@
-export interface IPaginatedMessages<T> {
-  messages: T[];
+export interface IPaginated<T> {
+  items: T[];
   total: number;
   page: number;
   limit: number;

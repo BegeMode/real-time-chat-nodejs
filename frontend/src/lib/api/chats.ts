@@ -1,20 +1,22 @@
 import { apiClient } from './client';
-import type { IMessage, IChat } from '@shared/index';
+import type { IMessage, IChat, IUser } from '@shared/index';
 
 export const chatsApi = {
 	/**
 	 * Get all chats for the current user
 	 */
-	async getChats(): Promise<IChat[]> {
-		const response = await apiClient.get<{ success: boolean; data: IChat[] }>('/chats');
+	async getChats(): Promise<IChat<IUser>[]> {
+		const response = await apiClient.get<{ success: boolean; data: IChat<IUser>[] }>('/chats');
 		return response.data.data;
 	},
 
 	/**
 	 * Get or create a chat with user(s)
 	 */
-	async getOrCreateChat(userIds: string[]): Promise<IChat> {
-		const response = await apiClient.post<{ success: boolean; data: IChat }>('/chats', { userIds });
+	async getOrCreateChat(userIds: string[]): Promise<IChat<IUser>> {
+		const response = await apiClient.post<{ success: boolean; data: IChat<IUser> }>('/chats', {
+			userIds
+		});
 		return response.data.data;
 	},
 
@@ -31,11 +33,14 @@ export const chatsApi = {
 	/**
 	 * Send a new message
 	 */
-	async sendMessage(chatId: string, text: string): Promise<IMessage> {
-		const response = await apiClient.post<{ success: boolean; data: IMessage }>('/chats/messages', {
-			chatId,
-			text
-		});
+	async sendMessage(chatId: string, text: string): Promise<IMessage<IUser>> {
+		const response = await apiClient.post<{ success: boolean; data: IMessage<IUser> }>(
+			'/chats/messages',
+			{
+				chatId,
+				text
+			}
+		);
 		return response.data.data;
 	},
 

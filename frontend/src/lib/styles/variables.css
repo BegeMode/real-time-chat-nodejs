@@ -52,8 +52,22 @@
 
 	/* Border colors */
 	--color-border: var(--color-gray-200);
+	--color-border-hover: var(--color-gray-300);
 	--color-border-focus: var(--color-primary);
 	--color-border-error: var(--color-danger);
+
+	/* Chat Specific */
+	--color-sidebar-bg: var(--color-white);
+	--color-chat-bg: #f0f2f5;
+	--color-bubble-me: var(--color-primary);
+	--color-bubble-me-text: var(--color-white);
+	--color-bubble-other: var(--color-white);
+	--color-bubble-other-text: var(--color-text-primary);
+
+	/* Glassmorphism */
+	--glass-bg: rgba(255, 255, 255, 0.7);
+	--glass-border: rgba(255, 255, 255, 0.3);
+	--glass-blur: blur(10px);
 
 	/* ========================================
 	 * Typography
@@ -148,7 +162,8 @@
 	--max-width-wide: 1200px;
 
 	/* Header */
-	--header-height: 60px;
+	--header-height: 64px;
+	--sidebar-width: 360px;
 }
 
 /* ========================================

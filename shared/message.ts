@@ -1,7 +1,7 @@
-export interface IMessage {
+export interface IMessage<T = string> {
   _id: string;
   chatId: string;
-  senderId: string;
+  senderId: T;
   text: string;
   createdAt: Date;
 }

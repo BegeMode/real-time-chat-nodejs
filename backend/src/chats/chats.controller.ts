@@ -3,39 +3,38 @@ import { CreateChatDto } from '@chats/dto/create-chat.dto.js';
 import { CreateMessageDto } from '@chats/dto/create-message.dto.js';
 import { GetMessagesQueryDto } from '@chats/dto/get-messages-query.dto.js';
 import { MessageDocument } from '@chats/models/message.js';
+import { AuthUser } from '@decorators/auth-user.decorator.js';
 import { JwtAuthGuard } from '@guards/jwt-auth.guard.js';
 import {
   Body,
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
-import { IPaginatedMessages } from '@shared/paginatedMessages.js';
-import { Request } from 'express';
-
-interface IAuthenticatedRequest extends Request {
-  user: {
-    userId: string;
-    email: string;
-  };
-}
+import { IPaginated } from '@shared/paginated.js';
 
 @Controller('chats')
 @UseGuards(JwtAuthGuard)
 export class ChatsController {
+  private logger = new Logger(ChatsController.name, { timestamp: true });
+
   constructor(private readonly chatsService: ChatsService) {}
 
   /**
    * GET /chats - Get all conversations for the current user
    */
   @Get()
-  async getChats(@Req() req: IAuthenticatedRequest) {
-    const chats = await this.chatsService.getChats(req.user.userId);
+  async getChats(@AuthUser('_id') userId: string) {
+    const chats = await this.chatsService.getChats(userId);
+
+    this.logger.debug(
+      `Found ${chats.length.toString()} chats for user: ${userId}`,
+    );
 
     return {
       success: true,
@@ -49,10 +48,10 @@ export class ChatsController {
   @Post()
   async getOrCreateChat(
     @Body() createChatDto: CreateChatDto,
-    @Req() req: IAuthenticatedRequest,
+    @AuthUser('_id') userId: string,
   ) {
     const chat = await this.chatsService.getOrCreateChat(
-      req.user.userId,
+      userId,
       createChatDto.userIds,
     );
 
@@ -68,9 +67,9 @@ export class ChatsController {
   @Delete(':chatId')
   async deleteChat(
     @Param('chatId') chatId: string,
-    @Req() req: IAuthenticatedRequest,
+    @AuthUser('_id') userId: string,
   ) {
-    await this.chatsService.deleteChat(req.user.userId, chatId);
+    await this.chatsService.deleteChat(userId, chatId);
 
     return {
       success: true,
@@ -83,10 +82,10 @@ export class ChatsController {
   @Post('messages')
   async createMessage(
     @Body() createMessageDto: CreateMessageDto,
-    @Req() req: IAuthenticatedRequest,
+    @AuthUser('_id') userId: string,
   ) {
     const message = await this.chatsService.createMessage(
-      req.user.userId,
+      userId,
       createMessageDto,
     );
 
@@ -103,13 +102,9 @@ export class ChatsController {
   async getMessages(
     @Param('chatId') chatId: string,
     @Query() query: GetMessagesQueryDto,
-    @Req() req: IAuthenticatedRequest,
-  ): Promise<{ success: boolean; data: IPaginatedMessages<MessageDocument> }> {
-    const result = await this.chatsService.getMessages(
-      req.user.userId,
-      chatId,
-      query,
-    );
+    @AuthUser('_id') userId: string,
+  ): Promise<{ success: boolean; data: IPaginated<MessageDocument> }> {
+    const result = await this.chatsService.getMessages(userId, chatId, query);
 
     return {
       success: true,
@@ -124,14 +119,10 @@ export class ChatsController {
   async deleteMessage(
     @Param('messageId') messageId: string,
     @Query('forEveryone') forEveryone: string,
-    @Req() req: IAuthenticatedRequest,
+    @AuthUser('_id') userId: string,
   ) {
     const isForEveryone = forEveryone === 'true';
-    await this.chatsService.deleteMessage(
-      req.user.userId,
-      messageId,
-      isForEveryone,
-    );
+    await this.chatsService.deleteMessage(userId, messageId, isForEveryone);
 
     return {
       success: true,

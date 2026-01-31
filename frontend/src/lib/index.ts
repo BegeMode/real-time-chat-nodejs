@@ -7,3 +7,4 @@ export { chatsStore, activeChat } from './stores/chats';
 export { apiClient } from './api/client';
 export { authApi } from './api/auth';
 export { chatsApi } from './api/chats';
+export { usersApi } from './api/users';

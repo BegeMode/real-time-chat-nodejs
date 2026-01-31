@@ -1,11 +1,11 @@
 import { writable, derived } from 'svelte/store';
-import type { IChat, IMessage } from '@shared/index';
+import type { IChat, IMessage, IUser } from '@shared/index';
 import { chatsApi } from '$lib/api/chats';
 import { socketStore } from './socket';
 import { SocketEvents } from '@shared/index';
 
 interface ChatsState {
-	items: IChat[];
+	items: IChat<IUser>[];
 	activeChatId: string | null;
 	isLoading: boolean;
 	error: string | null;
@@ -43,9 +43,29 @@ function createChatsStore() {
 		},
 
 		/**
+		 * Create or get a chat with user(s)
+		 */
+		async createChat(userIds: string[]) {
+			update((s) => ({ ...s, isLoading: true, error: null }));
+			try {
+				const chat = await chatsApi.getOrCreateChat(userIds);
+				update((s) => {
+					// Add chat to list if not already there
+					const exists = s.items.find((c) => c._id === chat._id);
+					const items = exists ? s.items : [chat, ...s.items];
+					return { ...s, items, activeChatId: chat._id, isLoading: false };
+				});
+				return chat;
+			} catch (err: any) {
+				update((s) => ({ ...s, error: err.message, isLoading: false }));
+				throw err;
+			}
+		},
+
+		/**
 		 * Handle new message from socket
 		 */
-		addMessage(chatId: string, message: IMessage) {
+		addMessage(chatId: string, message: IMessage<IUser>) {
 			update((s) => {
 				const items = s.items.map((chat) => {
 					if (chat._id === chatId) {

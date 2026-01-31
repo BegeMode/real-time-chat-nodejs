@@ -3,5 +3,6 @@ export interface IUser {
   email: string;
   username: string;
   avatar?: string;
+  isOnline?: boolean;
   createdAt?: Date;
 }

@@ -1,21 +1,27 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { authStore, isAuthenticated, currentUser, socketStore } from '$lib';
+	import { chatsStore } from '$lib/stores/chats';
 	import { authApi } from '$lib/api/auth';
+	import ChatSidebar from '$lib/components/ChatSidebar.svelte';
+	import ChatWindow from '$lib/components/ChatWindow.svelte';
 
 	let user = $derived($currentUser);
 	let authenticated = $derived($isAuthenticated);
 	let isSocketConnected = $derived($socketStore.isConnected);
 
 	// Redirect to login if not authorized
-	onMount(() => {
+	onMount(async () => {
 		const unsubscribe = isAuthenticated.subscribe((value) => {
-			// Wait for the store to initialize (after layout mount)
 			if (!$authStore.isLoading && !value) {
 				goto('/login');
 			}
 		});
+
+		if (authenticated) {
+			await chatsStore.loadChats();
+		}
 
 		return unsubscribe;
 	});
@@ -32,25 +38,62 @@
 </svelte:head>
 
 {#if authenticated && user}
-	<div class="app-container">
+	<div class="app-layout">
 		<header class="app-header">
-			<h1>RealTime Chat</h1>
-			<div class="user-info">
-				<div class="socket-status" class:connected={isSocketConnected}>
-					<span class="status-dot"></span>
-					<span class="status-text">{isSocketConnected ? 'Connected' : 'Disconnected'}</span>
+			<div class="header-left">
+				<div class="logo">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg
+					>
+					<h1>RealTime</h1>
 				</div>
-				<span class="username">{user.username}</span>
-				<button class="btn-logout" onclick={handleLogout}>Logout</button>
+			</div>
+
+			<div class="header-right">
+				<div
+					class="socket-status"
+					class:connected={isSocketConnected}
+					title={isSocketConnected ? 'Connected' : 'Disconnected'}
+				>
+					<span class="status-dot"></span>
+					<span class="status-text">{isSocketConnected ? 'Live' : 'Offline'}</span>
+				</div>
+				<div class="user-profile">
+					<div class="avatar-sm">{user.username[0].toUpperCase()}</div>
+					<span class="username">{user.username}</span>
+				</div>
+				<button class="btn-logout" onclick={handleLogout} aria-label="Logout">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline
+							points="16 17 21 12 16 7"
+						></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg
+					>
+				</button>
 			</div>
 		</header>
 
-		<main class="app-main">
-			<div class="welcome-message">
-				<h2>Welcome, {user.username}!</h2>
-				<p>Chat interface will be here...</p>
-			</div>
-		</main>
+		<div class="main-content">
+			<ChatSidebar />
+			<ChatWindow />
+		</div>
 	</div>
 {:else}
 	<div class="loading-screen">
@@ -59,57 +102,97 @@
 {/if}
 
 <style>
-	.app-container {
-		min-height: 100vh;
+	:global(body) {
+		overflow: hidden;
+	}
+
+	.app-layout {
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
 		background: var(--color-bg-page);
 	}
 
 	.app-header {
-		background: var(--color-bg-card);
-		padding: var(--spacing-4) var(--spacing-8);
-		box-shadow: var(--shadow-sm);
+		height: var(--header-height);
+		background: var(--color-white);
+		border-bottom: 1px solid var(--color-border);
+		padding: 0 var(--spacing-6);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		flex-shrink: 0;
+		z-index: 20;
 	}
 
-	.app-header h1 {
-		margin: 0;
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-primary);
-	}
-
-	.user-info {
+	.header-left {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4);
+	}
+
+	.logo {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		color: var(--color-primary);
+	}
+
+	.logo h1 {
+		font-size: var(--font-size-xl);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-primary);
+		margin: 0;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-6);
+	}
+
+	.user-profile {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+	}
+
+	.avatar-sm {
+		width: 32px;
+		height: 32px;
+		border-radius: var(--radius-full);
+		background: var(--color-gray-100);
+		color: var(--color-primary);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-sm);
 	}
 
 	.username {
 		font-weight: var(--font-weight-medium);
 		color: var(--color-text-primary);
+		font-size: var(--font-size-sm);
 	}
 
 	.btn-logout {
-		padding: var(--spacing-2) var(--spacing-4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
 		background: transparent;
-		color: var(--color-danger);
-		border: 1px solid var(--color-danger);
-		border-radius: var(--radius-base);
-		font-size: var(--font-size-sm);
-		font-family: var(--font-family-base);
+		color: var(--color-gray-400);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
 		cursor: pointer;
-		transition:
-			background var(--transition-base),
-			color var(--transition-base);
+		transition: all var(--transition-base);
 	}
 
 	.btn-logout:hover {
-		background: var(--color-danger);
-		color: var(--color-text-inverse);
+		background: var(--color-danger-light);
+		color: var(--color-danger);
+		border-color: var(--color-danger);
 	}
 
 	.socket-status {
@@ -117,9 +200,10 @@
 		align-items: center;
 		gap: var(--spacing-2);
 		padding: var(--spacing-1) var(--spacing-3);
-		background: var(--color-bg-page);
+		background: var(--color-gray-50);
 		border-radius: var(--radius-full);
 		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
 		color: var(--color-text-secondary);
 	}
 
@@ -127,7 +211,7 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--color-danger);
+		background: var(--color-gray-300);
 	}
 
 	.socket-status.connected .status-dot {
@@ -135,22 +219,15 @@
 		box-shadow: 0 0 8px rgba(var(--color-success-rgb), 0.4);
 	}
 
-	.app-main {
+	.socket-status.connected {
+		color: var(--color-success);
+		background: rgba(var(--color-success-rgb), 0.1);
+	}
+
+	.main-content {
 		flex: 1;
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--spacing-8);
-	}
-
-	.welcome-message {
-		text-align: center;
-		color: var(--color-text-secondary);
-	}
-
-	.welcome-message h2 {
-		color: var(--color-text-primary);
-		margin-bottom: var(--spacing-2);
+		overflow: hidden;
 	}
 
 	.loading-screen {
