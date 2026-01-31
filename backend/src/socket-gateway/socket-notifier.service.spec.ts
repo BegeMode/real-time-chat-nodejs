@@ -1,15 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import {
-  PubSubChannels,
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type {
   PubSubNewMessagePayload,
   PubSubUserStatusPayload,
   PubSubUserTypingPayload,
-  SocketEvents,
 } from '@shared/index.js';
+import { PubSubChannels, SocketEvents } from '@shared/index.js';
 import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { SocketNotifierService } from '@socket-gateway/socket-notifier.service.js';
 import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
-import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
+import { beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
 
 describe('SocketNotifierService', () => {
   let service: SocketNotifierService;
