@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { SocketEvents } from '@shared/index';
+import { SocketEvents, type IMessage, type IUser } from '@shared/index';
 import { authStore } from './auth';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
@@ -59,6 +59,29 @@ function createSocketStore() {
 				console.error('🚫 Socket unauthorized:', payload);
 				// Potentially trigger token refresh or logout
 				update((s) => ({ ...s, error: 'Unauthorized', isConnected: false }));
+			});
+
+			// Message listeners
+			socket.on(SocketEvents.NEW_MESSAGE, async (payload: IMessage<IUser>) => {
+				console.log('📩 New message received:', payload);
+				const { messagesStore } = await import('./messages');
+				messagesStore.addMessage(payload.chatId, payload);
+			});
+
+			socket.on(SocketEvents.MESSAGE_ERROR, (payload: { message: string }) => {
+				console.error('⚠️ Message error:', payload);
+				update((s) => ({ ...s, error: payload.message }));
+			});
+
+			// User status listeners
+			socket.on(SocketEvents.USER_ONLINE, async (payload: { userId: string }) => {
+				const { chatsStore } = await import('./chats');
+				chatsStore.setUserStatus(payload.userId, true);
+			});
+
+			socket.on(SocketEvents.USER_OFFLINE, async (payload: { userId: string }) => {
+				const { chatsStore } = await import('./chats');
+				chatsStore.setUserStatus(payload.userId, false);
 			});
 
 			return socket;

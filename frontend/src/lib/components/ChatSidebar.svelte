@@ -89,7 +89,7 @@
 							<span class="chat-time">{formatTime(chat.updatedAt)}</span>
 						</div>
 						<div class="chat-preview">
-							{chat.lastMessage?.content || 'No messages yet'}
+							{chat.lastMessage?.text || 'No messages yet'}
 						</div>
 					</div>
 				</button>

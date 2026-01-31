@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { activeChat } from '$lib/stores/chats';
 	import { currentUser } from '$lib/stores/auth';
+	import { messagesStore } from '$lib/stores/messages';
 	import ChatEditor from './ChatEditor.svelte';
 	import { onMount, tick } from 'svelte';
 
@@ -10,21 +11,8 @@
 
 	let scrollContainer = $state<HTMLDivElement>();
 
-	// Mock messages for now until we have real ones in the store/api
-	let messages = $state([
-		{
-			_id: '1',
-			content: 'Hey there!',
-			sender: { _id: 'other', username: 'John' },
-			createdAt: new Date().toISOString()
-		},
-		{
-			_id: '2',
-			content: 'Hi! How are you?',
-			sender: { _id: 'me', username: 'Me' },
-			createdAt: new Date().toISOString()
-		}
-	]);
+	const chatMessages = $derived($messagesStore[chat?._id || '']?.items || []);
+	const isLoading = $derived($messagesStore[chat?._id || '']?.isLoading || false);
 
 	async function scrollToBottom() {
 		await tick();
@@ -34,24 +22,23 @@
 	}
 
 	$effect(() => {
-		if (chat) {
+		if (chat?._id) {
+			messagesStore.loadMessages(chat._id);
+			scrollToBottom();
+		}
+	});
+
+	$effect(() => {
+		if (chatMessages.length) {
 			scrollToBottom();
 		}
 	});
 
 	function handleSendMessage(content: string) {
-		console.log('Sending message:', content);
-		// TODO: Implement actual sending
-		messages = [
-			...messages,
-			{
-				_id: Math.random().toString(),
-				content,
-				sender: { _id: user?._id || 'me', username: user?.username || 'Me' },
-				createdAt: new Date().toISOString()
-			}
-		];
-		scrollToBottom();
+		if (chat?._id) {
+			messagesStore.sendMessage(chat._id, content);
+			scrollToBottom();
+		}
 	}
 </script>
 
@@ -109,11 +96,15 @@
 
 		<div class="messages-container" bind:this={scrollContainer}>
 			<div class="messages-list">
-				{#each messages as msg (msg._id)}
-					{@const isMe = msg.sender._id === user?._id || msg.sender._id === 'me'}
+				{#if isLoading && chatMessages.length === 0}
+					<div class="loading-messages">Loading messages...</div>
+				{/if}
+				{#each chatMessages as msg (msg._id)}
+					{@const senderId = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId?._id}
+					{@const isMe = senderId === user?._id}
 					<div class="message-wrapper" class:me={isMe}>
 						<div class="message-bubble">
-							<div class="message-content">{msg.content}</div>
+							<div class="message-content">{msg.text}</div>
 							<div class="message-time">
 								{new Date(msg.createdAt).toLocaleTimeString([], {
 									hour: '2-digit',
