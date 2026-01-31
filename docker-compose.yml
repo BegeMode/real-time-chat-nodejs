@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # MongoDB Database
   mongodb:
     image: mongo:latest
     container_name: chat-app-mongodb
@@ -8,6 +9,117 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Socket.io adapter and pub/sub
+  redis:
+    image: redis:alpine
+    container_name: chat-app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Service (REST, Auth, DB logic)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chat-app-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env 
+    environment:
+      - SERVICE_TYPE=API
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/chat-app
+      - REDIS_URL=redis://redis:6379
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-your-super-secret-access-key}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
+      - FRONTEND_URL=http://localhost:5173
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+  # WebSocket Gateway Service
+  websockets:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chat-app-websockets
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env 
+    environment:
+      - SERVICE_TYPE=WEBSOCKETS
+      - PORT=3001
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/chat-app
+      - REDIS_URL=redis://redis:6379
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-your-super-secret-access-key}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
+      - FRONTEND_URL=http://localhost:5173
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+  # Frontend (optional - for production)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: chat-app-frontend
+  #   ports:
+  #     - "5173:5173"
+  #   env_file:
+  #     - ./frontend/.env 
+  #   environment:
+  #     - VITE_API_URL=http://localhost:3000
+  #     - VITE_WS_URL=http://localhost:3001
+  #   depends_on:
+  #     - api
+  #     - websockets
+  #   networks:
+  #     - chat-network
 
 volumes:
   mongodb_data:
+  redis_data:
+
+networks:
+  chat-network:
+    driver: bridge
