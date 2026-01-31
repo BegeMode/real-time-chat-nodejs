@@ -3,7 +3,7 @@ import { AuthService } from '@auth/auth.service.js';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SocketEvents } from '@shared/constants/events.js';
+import { SocketEvents } from '@shared/index.js';
 import { PinoLogger } from 'nestjs-pino';
 import { Socket } from 'socket.io';
 

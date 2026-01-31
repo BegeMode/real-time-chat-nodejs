@@ -38,6 +38,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: realtime-chat-backend:latest
     container_name: chat-app-api
     ports:
       - "3000:3000"
@@ -67,9 +68,7 @@ services:
 
   # WebSocket Gateway Service
   websockets:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: realtime-chat-backend:latest
     container_name: chat-app-websockets
     ports:
       - "3001:3001"
