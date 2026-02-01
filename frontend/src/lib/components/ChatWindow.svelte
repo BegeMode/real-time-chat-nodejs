@@ -18,6 +18,7 @@
 	const hasMore = $derived($messagesStore[chat?._id || '']?.hasMore || false);
 
 	let lastMessageId = $state<string | null>(null);
+	let previousScrollHeight = 0;
 
 	async function scrollToBottom() {
 		await tick();
@@ -29,13 +30,17 @@
 	function handleHiddenItemIntersection(entries: IntersectionObserverEntry[]) {
 		const entry = entries[0];
 		if (entry.isIntersecting && hasMore && !isLoading && chat?._id) {
+			if (scrollContainer) {
+				previousScrollHeight = scrollContainer.scrollHeight;
+			}
 			messagesStore.loadMore(chat._id);
 		}
 	}
 
 	$effect(() => {
 		if (chat?._id) {
-			lastMessageId = null; // Reset for new chat
+			lastMessageId = null;
+			previousScrollHeight = 0;
 			messagesStore.loadMessages(chat._id);
 			scrollToBottom();
 		}
@@ -44,8 +49,20 @@
 	// Handle scroll positioning: scroll to bottom only when NEW messages arrive at the end
 	$effect(() => {
 		if (chatMessages.length && !isLoading && scrollContainer) {
-			const currentLastId = chatMessages[chatMessages.length - 1]._id;
-			if (currentLastId !== lastMessageId) {
+			const currentLastId = chatMessages[chatMessages.length - 1]?._id;
+
+			if (previousScrollHeight > 0) {
+				// History loaded: preserve position by adjusting scroll
+				const newScrollHeight = scrollContainer.scrollHeight;
+				const heightDifference = newScrollHeight - previousScrollHeight;
+				if (heightDifference > 0) {
+					scrollContainer.scrollTop += heightDifference;
+				}
+				previousScrollHeight = 0;
+				// Sync lastMessageId to prevent scrollToBottom trigger
+				lastMessageId = currentLastId;
+			} else if (currentLastId !== lastMessageId) {
+				// New message or initial load: scroll to bottom
 				scrollToBottom();
 				lastMessageId = currentLastId;
 			}
