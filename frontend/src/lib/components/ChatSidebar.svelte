@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { chatsStore } from '$lib/stores/chats';
-	import { currentUser } from '$lib/stores/auth';
+	import { chatsStore } from '$lib/stores/chats.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import NewChatModal from './NewChatModal.svelte';
 	import { Plus, Search } from './icons';
 
-	const { items, activeChatId, isLoading } = $derived($chatsStore);
-	const user = $derived($currentUser);
+	// Access store properties directly using $derived
+	const items = $derived(chatsStore.items);
+	const activeChatId = $derived(chatsStore.activeChatId);
+	const isLoading = $derived(chatsStore.isLoading);
+	const user = $derived(authStore.currentUser);
 
 	let isNewChatModalOpen = $state(false);
 

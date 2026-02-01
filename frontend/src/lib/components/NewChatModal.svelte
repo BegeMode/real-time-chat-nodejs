@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
 	import { usersApi } from '$lib/api/users';
-	import { chatsStore } from '$lib/stores/chats';
+	import { chatsStore } from '$lib/stores/chats.svelte';
 	import type { IUser } from '@shared/index';
 	import { ChevronRight } from './icons';
 

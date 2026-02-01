@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { authStore } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { authApi } from '$lib/api/auth';
 	import '$lib/styles/auth.css';
 	import type { IRegisterDto } from '@shared/index';
@@ -17,9 +17,9 @@
 		{}
 	);
 
-	// State from store
-	let isLoading = $derived($authStore.isLoading);
-	let serverError = $derived($authStore.error);
+	// State from store - access class properties directly
+	const isLoading = $derived(authStore.isLoading);
+	const serverError = $derived(authStore.error);
 
 	// Clear previous errors on mount
 	onMount(() => {

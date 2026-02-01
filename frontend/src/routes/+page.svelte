@@ -1,30 +1,31 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount, tick } from 'svelte';
-	import { authStore, isAuthenticated, currentUser, socketStore } from '$lib';
-	import { chatsStore } from '$lib/stores/chats';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { socketStore } from '$lib/stores/socket.svelte';
+	import { chatsStore } from '$lib/stores/chats.svelte';
 	import { authApi } from '$lib/api/auth';
 	import ChatSidebar from '$lib/components/ChatSidebar.svelte';
 	import ChatWindow from '$lib/components/ChatWindow.svelte';
 	import { MessageSquare, LogOut } from '$lib/components/icons';
 
-	let user = $derived($currentUser);
-	let authenticated = $derived($isAuthenticated);
-	let isSocketConnected = $derived($socketStore.isConnected);
+	// Access store properties directly using $derived
+	const user = $derived(authStore.currentUser);
+	const isAuthenticated = $derived(authStore.isAuthenticated);
+	const isLoading = $derived(authStore.isLoading);
+	const isSocketConnected = $derived(socketStore.isConnected);
 
 	// Redirect to login if not authorized
-	onMount(async () => {
-		const unsubscribe = isAuthenticated.subscribe((value) => {
-			if (!$authStore.isLoading && !value) {
-				goto('/login');
-			}
-		});
-
-		if (authenticated) {
-			await chatsStore.loadChats();
+	$effect(() => {
+		if (!isLoading && !isAuthenticated) {
+			goto('/login');
 		}
+	});
 
-		return unsubscribe;
+	// Load chats when authenticated
+	$effect(() => {
+		if (isAuthenticated) {
+			chatsStore.loadChats();
+		}
 	});
 
 	async function handleLogout() {
@@ -38,7 +39,7 @@
 	<meta name="description" content="RealTime Chat for real-time communication" />
 </svelte:head>
 
-{#if authenticated && user}
+{#if isAuthenticated && user}
 	<div class="app-layout">
 		<header class="app-header">
 			<div class="header-left">

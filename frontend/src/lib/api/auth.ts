@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { authStore } from '$lib/stores/auth';
+import { authStore } from '$lib/stores/auth.svelte';
 import type { IAuthResponse, ILoginDto, IRegisterDto, IUser } from '@shared/index';
 import { AxiosError } from 'axios';
 

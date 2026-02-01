@@ -1,5 +1,5 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { authStore } from '$lib/stores/auth';
+import { authStore } from '$lib/stores/auth.svelte';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 

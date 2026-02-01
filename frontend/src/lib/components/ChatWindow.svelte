@@ -1,18 +1,20 @@
 <script lang="ts">
-	import { activeChat, chatsStore } from '$lib/stores/chats';
-	import { currentUser } from '$lib/stores/auth';
-	import { messagesStore } from '$lib/stores/messages';
-	import { socketStore } from '$lib/stores/socket';
+	import { chatsStore } from '$lib/stores/chats.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { messagesStore } from '$lib/stores/messages.svelte';
+	import { socketStore } from '$lib/stores/socket.svelte';
 	import { SocketEvents, type IUser } from '@shared/index';
 	import ChatEditor from './ChatEditor.svelte';
 	import { Phone, MoreVertical, MessageSquare } from './icons';
 	import { tick } from 'svelte';
 
-	const chat = $derived($activeChat);
-	const user = $derived($currentUser);
+	// Use $derived to reactively access store class properties
+	const chat = $derived(chatsStore.activeChat);
+	const user = $derived(authStore.currentUser);
 	const otherMember = $derived(chat?.members.find((m) => m.user._id !== user?._id));
 
-	const typingIds = $derived($chatsStore.typingUsers[chat?._id || ''] || []);
+	// Access typing users directly from the store
+	const typingIds = $derived(chatsStore.getTypingUsers(chat?._id || ''));
 
 	const otherTypingUsers = $derived.by(() => {
 		if (!chat) return [];
@@ -32,9 +34,10 @@
 	let scrollContainer = $state<HTMLDivElement>();
 	let hiddenItem = $state<HTMLDivElement>();
 
-	const chatMessages = $derived($messagesStore[chat?._id || '']?.items || []);
-	const isLoading = $derived($messagesStore[chat?._id || '']?.isLoading || false);
-	const hasMore = $derived($messagesStore[chat?._id || '']?.hasMore || false);
+	// Access messages through store methods
+	const chatMessages = $derived(messagesStore.getMessages(chat?._id || ''));
+	const isLoading = $derived(messagesStore.isLoadingChat(chat?._id || ''));
+	const hasMore = $derived(messagesStore.hasMoreMessages(chat?._id || ''));
 
 	let lastMessageId = $state<string | null>(null);
 	let previousScrollHeight = 0;
@@ -56,12 +59,14 @@
 		}
 	}
 
+	let lastProcessedChatId = $state<string | null>(null);
 	$effect(() => {
-		if (chat?._id) {
+		const chatId = chat?._id;
+		if (chatId && chatId !== lastProcessedChatId) {
+			lastProcessedChatId = chatId;
 			lastMessageId = null;
 			previousScrollHeight = 0;
-			messagesStore.loadMessages(chat._id);
-			scrollToBottom();
+			messagesStore.loadMessages(chatId);
 		}
 	});
 
@@ -114,7 +119,7 @@
 		}
 	}
 
-	function isDateItem(item: any): item is import('$lib/stores/messages').IDateItem {
+	function isDateItem(item: any): item is import('$lib/stores/messages.svelte').IDateItem {
 		return item && item.type === 'date';
 	}
 </script>

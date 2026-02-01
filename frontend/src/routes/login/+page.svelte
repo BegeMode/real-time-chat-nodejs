@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { authStore, isAuthenticated } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { authApi } from '$lib/api/auth';
 	import '$lib/styles/auth.css';
 	import type { ILoginDto } from '@shared/index';
@@ -13,22 +13,21 @@
 	// Validation errors
 	let errors = $state<{ email?: string; password?: string }>({});
 
-	// State from store
-	let isLoading = $derived($authStore.isLoading);
-	let serverError = $derived($authStore.error);
+	// State from store - access class properties directly
+	const isLoading = $derived(authStore.isLoading);
+	const serverError = $derived(authStore.error);
+	const isAuthenticated = $derived(authStore.isAuthenticated);
 
 	// Redirect if already authorized
+	$effect(() => {
+		if (isAuthenticated) {
+			goto('/');
+		}
+	});
+
+	// Clear previous errors on mount
 	onMount(() => {
-		// Clear any previous errors
 		authStore.setError(null);
-
-		const unsubscribe = isAuthenticated.subscribe((value) => {
-			if (value) {
-				goto('/');
-			}
-		});
-
-		return unsubscribe;
 	});
 
 	/**
