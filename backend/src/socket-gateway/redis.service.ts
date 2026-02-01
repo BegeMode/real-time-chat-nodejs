@@ -20,6 +20,9 @@ type RedisPayload =
   | PubSubMessageDeletedPayload
   | PubSubChatDeletedPayload;
 
+const ONLINE_USERS_KEY = 'presence:online_users';
+const USER_REFCOUNT_PREFIX = 'presence:refcount:';
+
 @Injectable()
 export class RedisService
   extends PubSubService
@@ -130,6 +133,47 @@ export class RedisService
     this.messageHandlers
       .get(channel)
       ?.delete(handler as (payload: unknown) => void);
+  }
+
+  /**
+   * Presence Tracking (Global Reference Counting)
+   */
+  async setUserOnline(userId: string): Promise<boolean> {
+    const key = `${USER_REFCOUNT_PREFIX}${userId}`;
+    const count = await this.publisher.incr(key);
+
+    if (count === 1) {
+      await this.publisher.sadd(ONLINE_USERS_KEY, userId);
+
+      return true;
+    }
+
+    return false;
+  }
+
+  async setUserOffline(userId: string): Promise<boolean> {
+    const key = `${USER_REFCOUNT_PREFIX}${userId}`;
+    const count = await this.publisher.decr(key);
+
+    if (count <= 0) {
+      // Cleanup to prevent negative counts or orphans
+      await this.publisher.del(key);
+      const wasRemoved = await this.publisher.srem(ONLINE_USERS_KEY, userId);
+
+      return wasRemoved === 1;
+    }
+
+    return false;
+  }
+
+  async getOnlineUserIds(): Promise<string[]> {
+    return this.publisher.smembers(ONLINE_USERS_KEY);
+  }
+
+  async isUserOnline(userId: string): Promise<boolean> {
+    const result = await this.publisher.sismember(ONLINE_USERS_KEY, userId);
+
+    return result === 1;
   }
 
   /**

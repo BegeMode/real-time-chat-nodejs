@@ -10,4 +10,8 @@ export abstract class PubSubService {
     channel: PubSubChannels,
     handler: (payload: unknown) => void,
   ): void;
+  abstract setUserOnline(userId: string): Promise<boolean>;
+  abstract setUserOffline(userId: string): Promise<boolean>;
+  abstract getOnlineUserIds(): Promise<string[]>;
+  abstract isUserOnline(userId: string): Promise<boolean>;
 }

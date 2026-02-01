@@ -22,8 +22,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@shared/*": ["../shared/dist/*"],
-      "@shared": ["../shared/dist/index.js"],
+      "@shared/*": ["../shared/dist/*", "../shared/*"],
       "@decorators/*": ["./src/decorators/*"],
       "@guards/*": ["./src/guards/*"],
       "@app-types/*": ["./src/types/*"],

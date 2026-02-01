@@ -109,7 +109,7 @@ function createSocketStore() {
 		/**
 		 * Type-safe emit helper
 		 */
-		emit(event: SocketEvents, payload: any) {
+		emit(event: SocketEvents, payload: unknown) {
 			if (socket?.connected) {
 				socket.emit(event, payload);
 			} else {
@@ -120,7 +120,7 @@ function createSocketStore() {
 		/**
 		 * Type-safe on helper
 		 */
-		on(event: SocketEvents, callback: (payload: any) => void) {
+		on(event: SocketEvents, callback: (payload: unknown) => void) {
 			if (socket) {
 				socket.on(event, callback);
 			}

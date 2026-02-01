@@ -30,8 +30,8 @@ function createChatsStore() {
 			try {
 				const chats = await chatsApi.getChats();
 				update((s) => ({ ...s, items: chats, isLoading: false }));
-			} catch (err: any) {
-				update((s) => ({ ...s, error: err.message, isLoading: false }));
+			} catch (err) {
+				update((s) => ({ ...s, error: (err as Error).message, isLoading: false }));
 			}
 		},
 
@@ -56,8 +56,8 @@ function createChatsStore() {
 					return { ...s, items, activeChatId: chat._id, isLoading: false };
 				});
 				return chat;
-			} catch (err: any) {
-				update((s) => ({ ...s, error: err.message, isLoading: false }));
+			} catch (err) {
+				update((s) => ({ ...s, error: (err as Error).message, isLoading: false }));
 				throw err;
 			}
 		},

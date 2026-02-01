@@ -12,6 +12,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IPaginated,
+  IUser,
   PubSubChannels,
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
@@ -176,13 +177,29 @@ export class ChatsService {
     const allMemberIds = participantIds.map((id) => new Types.ObjectId(id));
 
     // Check if conversation already exists with EXACTLY these members
-    const existingChat = await this.chatModel.findOne({
-      members: { $size: allMemberIds.length },
-      'members.user': { $all: allMemberIds },
-    });
+    const existingChat = await this.chatModel
+      .findOne({
+        members: { $size: allMemberIds.length },
+        'members.user': { $all: allMemberIds },
+      })
+      .populate('members.user', 'username email avatar');
 
     if (existingChat) {
-      return existingChat;
+      const onlineIds = await this.pubSubService.getOnlineUserIds();
+      const onlineIdsSet = new Set(onlineIds);
+      const chatObj = existingChat.toObject();
+      chatObj.members = chatObj.members.map((m) => {
+        const u = m.user as unknown as IUser;
+
+        if (u._id) {
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+          u.isOnline = onlineIdsSet.has(u._id.toString());
+        }
+
+        return m;
+      });
+
+      return chatObj as unknown as ChatDocument;
     }
 
     // Create new conversation
@@ -197,28 +214,65 @@ export class ChatsService {
 
     this.logger.log(`Chat created: ${chat._id.toString()}`);
 
-    return chat;
+    const populatedChat = await this.chatModel
+      .findById(chat._id)
+      .populate('members.user', 'username email avatar');
+
+    if (!populatedChat) return chat;
+
+    const onlineIds = await this.pubSubService.getOnlineUserIds();
+    const onlineIdsSet = new Set(onlineIds);
+    const chatObj = populatedChat.toObject();
+    chatObj.members = chatObj.members.map((m) => {
+      const u = m.user as unknown as IUser;
+
+      if (u._id) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+        u.isOnline = onlineIdsSet.has(u._id.toString());
+      }
+
+      return m;
+    });
+
+    return chatObj as unknown as ChatDocument;
   }
 
   /**
    * Get all conversations for a user
    */
   async getChats(userId: string): Promise<ChatDocument[]> {
-    return (
-      this.chatModel
-        .find({
-          members: {
-            $elemMatch: {
-              user: new Types.ObjectId(userId),
-              deletedAt: null,
-            },
+    const chats = await this.chatModel
+      .find({
+        members: {
+          $elemMatch: {
+            user: new Types.ObjectId(userId),
+            deletedAt: null,
           },
-        })
-        .populate('members.user', 'username email avatar')
-        .populate('lastMessage')
-        // eslint-disable-next-line unicorn/no-array-sort
-        .sort({ updatedAt: -1 })
-    );
+        },
+      })
+      .populate('members.user', 'username email avatar')
+      .populate('lastMessage')
+      // eslint-disable-next-line unicorn/no-array-sort
+      .sort({ updatedAt: -1 });
+
+    const onlineIds = await this.pubSubService.getOnlineUserIds();
+    const onlineIdsSet = new Set(onlineIds);
+
+    return chats.map((chat) => {
+      const chatObj = chat.toObject();
+      chatObj.members = chatObj.members.map((m) => {
+        const u = m.user as unknown as IUser;
+
+        if (u._id) {
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+          u.isOnline = onlineIdsSet.has(u._id.toString());
+        }
+
+        return m;
+      });
+
+      return chatObj as unknown as ChatDocument;
+    });
   }
   /**
    * Delete a message.

@@ -14,7 +14,8 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { SocketEvents } from '@shared/index.js';
+import { PubSubChannels, SocketEvents } from '@shared/index.js';
+import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
 import { Server, Socket } from 'socket.io';
 
@@ -41,6 +42,7 @@ export class SocketGatewayService
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly pubSubService: PubSubService,
   ) {
     super();
   }
@@ -62,8 +64,8 @@ export class SocketGatewayService
     return [...this.userSockets.keys()];
   }
 
-  isUserOnline(userId: string): boolean {
-    return this.userSockets.has(userId);
+  isUserOnline(userId: string): Promise<boolean> {
+    return this.pubSubService.isUserOnline(userId);
   }
 
   broadcast(event: SocketEvents, payload: unknown): void {
@@ -108,9 +110,18 @@ export class SocketGatewayService
       // Automatically join personal channel
       await client.join(`user:${userId}`);
 
+      const isFirstConnection = await this.pubSubService.setUserOnline(userId);
+
+      if (isFirstConnection) {
+        await this.pubSubService.publish(PubSubChannels.USER_STATUS, {
+          userId,
+          isOnline: true,
+        });
+        this.broadcast(SocketEvents.USER_ONLINE, { userId });
+      }
+
       if (!this.userSockets.has(userId)) {
         this.userSockets.set(userId, new Set());
-        this.broadcast(SocketEvents.USER_ONLINE, { userId });
       }
 
       this.userSockets.get(userId)?.add(client.id);
@@ -139,9 +150,30 @@ export class SocketGatewayService
 
         if (userSocketSet.size === 0) {
           this.userSockets.delete(userId);
-          this.broadcast(SocketEvents.USER_OFFLINE, { userId });
         }
       }
+
+      // Track global disconnection in Redis
+      this.pubSubService
+        .setUserOffline(userId)
+        .then((isLastConnection: boolean) => {
+          if (isLastConnection) {
+            this.broadcast(SocketEvents.USER_OFFLINE, { userId });
+
+            return this.pubSubService.publish(PubSubChannels.USER_STATUS, {
+              userId,
+              isOnline: false,
+            });
+          }
+
+          // eslint-disable-next-line sonarjs/no-redundant-jump
+          return;
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Error handling global disconnect: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        });
     }
 
     this.logger.log(`Client disconnected: ${client.id}`);

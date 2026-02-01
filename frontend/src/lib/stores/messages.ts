@@ -51,13 +51,13 @@ function createMessagesStore() {
 						error: null
 					}
 				}));
-			} catch (err: any) {
+			} catch (err) {
 				update((s) => ({
 					...s,
 					[chatId]: {
 						...(s[chatId] || {}),
 						isLoading: false,
-						error: err.message
+						error: (err as Error).message
 					}
 				}));
 			}
@@ -101,12 +101,12 @@ function createMessagesStore() {
 				const message = await chatsApi.sendMessage(chatId, text);
 				this.addMessage(chatId, message);
 				return message;
-			} catch (err: any) {
+			} catch (err) {
 				update((s) => ({
 					...s,
 					[chatId]: {
 						...(s[chatId] || { items: [], isLoading: false, hasMore: false, error: null }),
-						error: err.message
+						error: (err as Error).message
 					}
 				}));
 				throw err;

@@ -27,7 +27,7 @@ export abstract class SocketTransport {
   /**
    * Check if a specific user is currently online
    */
-  abstract isUserOnline(userId: string): boolean;
+  abstract isUserOnline(userId: string): Promise<boolean> | boolean;
 
   /**
    * Broadcast a message to ALL connected users
