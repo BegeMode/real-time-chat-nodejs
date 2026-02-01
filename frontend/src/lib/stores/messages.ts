@@ -5,6 +5,8 @@ import { socketStore } from './socket';
 import { SocketEvents } from '@shared/index';
 import { chatsStore } from './chats';
 
+const PAGE_SIZE = 50;
+
 export interface IDateItem {
 	_id: string;
 	type: 'date';
@@ -71,7 +73,9 @@ function createMessagesStore() {
 		 */
 		async loadMessages(chatId: string) {
 			const state = get({ subscribe });
-			if (state[chatId]?.items.length > 0 && !state[chatId]?.error) return;
+			const chatState = state[chatId];
+			if (chatState?.isLoading) return;
+			if (chatState?.items.length > 0 && !chatState?.error) return;
 
 			update((s) => ({
 				...s,
@@ -84,8 +88,7 @@ function createMessagesStore() {
 			}));
 
 			try {
-				const response = await chatsApi.getMessages(chatId);
-				// Assuming response.items is the array of messages
+				const response = await chatsApi.getMessages(chatId, PAGE_SIZE);
 				const items = response.items || [];
 
 				update((s) => ({
@@ -93,7 +96,7 @@ function createMessagesStore() {
 					[chatId]: {
 						items: groupMessages(items),
 						isLoading: false,
-						hasMore: response.hasMore ?? items.length >= 50,
+						hasMore: response.hasMore ?? items.length >= PAGE_SIZE,
 						error: null
 					}
 				}));
@@ -102,6 +105,55 @@ function createMessagesStore() {
 					...s,
 					[chatId]: {
 						...(s[chatId] || {}),
+						isLoading: false,
+						error: (err as Error).message
+					}
+				}));
+			}
+		},
+
+		/**
+		 * Load earlier messages (pagination)
+		 */
+		async loadMore(chatId: string) {
+			const state = get({ subscribe });
+			const chatState = state[chatId];
+
+			if (!chatState || chatState.isLoading || !chatState.hasMore) return;
+
+			// Find the oldest message ID to use as 'before' cursor
+			const oldestMessage = chatState.items.find((item): item is IMessage<IUser> => {
+				return !('type' in item && item.type === 'date');
+			});
+
+			if (!oldestMessage) return;
+
+			update((s) => ({
+				...s,
+				[chatId]: {
+					...chatState,
+					isLoading: true
+				}
+			}));
+
+			try {
+				const response = await chatsApi.getMessages(chatId, PAGE_SIZE, oldestMessage._id);
+				const newItems = response.items || [];
+
+				update((s) => ({
+					...s,
+					[chatId]: {
+						items: groupMessages([...chatState.items, ...newItems]),
+						isLoading: false,
+						hasMore: response.hasMore ?? newItems.length >= PAGE_SIZE,
+						error: null
+					}
+				}));
+			} catch (err) {
+				update((s) => ({
+					...s,
+					[chatId]: {
+						...chatState,
 						isLoading: false,
 						error: (err as Error).message
 					}

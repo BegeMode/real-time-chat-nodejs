@@ -10,9 +10,13 @@
 	const otherMember = $derived(chat?.members.find((m) => m.user._id !== user?._id));
 
 	let scrollContainer = $state<HTMLDivElement>();
+	let hiddenItem = $state<HTMLDivElement>();
 
 	const chatMessages = $derived($messagesStore[chat?._id || '']?.items || []);
 	const isLoading = $derived($messagesStore[chat?._id || '']?.isLoading || false);
+	const hasMore = $derived($messagesStore[chat?._id || '']?.hasMore || false);
+
+	let lastMessageId = $state<string | null>(null);
 
 	async function scrollToBottom() {
 		await tick();
@@ -21,16 +25,40 @@
 		}
 	}
 
+	function handleHiddenItemIntersection(entries: IntersectionObserverEntry[]) {
+		const entry = entries[0];
+		if (entry.isIntersecting && hasMore && !isLoading && chat?._id) {
+			messagesStore.loadMore(chat._id);
+		}
+	}
+
 	$effect(() => {
 		if (chat?._id) {
+			lastMessageId = null; // Reset for new chat
 			messagesStore.loadMessages(chat._id);
 			scrollToBottom();
 		}
 	});
 
+	// Handle scroll positioning: scroll to bottom only when NEW messages arrive at the end
 	$effect(() => {
-		if (chatMessages.length) {
-			scrollToBottom();
+		if (chatMessages.length && !isLoading && scrollContainer) {
+			const currentLastId = chatMessages[chatMessages.length - 1]._id;
+			if (currentLastId !== lastMessageId) {
+				scrollToBottom();
+				lastMessageId = currentLastId;
+			}
+		}
+	});
+
+	$effect(() => {
+		if (hiddenItem) {
+			const observer = new IntersectionObserver(handleHiddenItemIntersection, {
+				root: scrollContainer,
+				threshold: 0.1
+			});
+			observer.observe(hiddenItem);
+			return () => observer.disconnect();
 		}
 	});
 
@@ -100,6 +128,14 @@
 
 		<div class="messages-container" bind:this={scrollContainer}>
 			<div class="messages-list">
+				{#if hasMore}
+					<div bind:this={hiddenItem} class="hidden-item">
+						{#if isLoading}
+							<div class="loading-more">Loading earlier messages...</div>
+						{/if}
+					</div>
+				{/if}
+
 				{#if isLoading && chatMessages.length === 0}
 					<div class="loading-messages">Loading messages...</div>
 				{/if}
@@ -278,6 +314,18 @@
 		font-weight: var(--font-weight-medium);
 		position: relative;
 		z-index: 2;
+	}
+
+	.hidden-item {
+		height: 10px;
+		width: 100%;
+	}
+
+	.loading-more {
+		text-align: center;
+		padding: var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
 	}
 
 	.message-wrapper {

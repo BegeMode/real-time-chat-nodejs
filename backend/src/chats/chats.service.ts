@@ -113,10 +113,9 @@ export class ChatsService {
       throw new ForbiddenException('You are not a participant of this chat');
     }
 
-    const { limit = 50, page = 1, before } = query;
-    const skip = (page - 1) * limit;
+    const { limit = 50, before } = query;
 
-    // Build query
+    // Build base query (messages accessible to user)
     const messageQuery: Record<string, unknown> = {
       chatId: new Types.ObjectId(chatId),
       members: {
@@ -127,7 +126,10 @@ export class ChatsService {
       },
     };
 
-    // Cursor-based pagination (if before ID provided)
+    // Calculate total messages available to this user (for UI)
+    const total = await this.messageModel.countDocuments(messageQuery);
+
+    // Filter for cursor-based pagination
     if (before) {
       const beforeMessage = await this.messageModel.findById(before);
 
@@ -136,28 +138,29 @@ export class ChatsService {
       }
     }
 
-    // Get messages
-    const [messages, total] = await Promise.all([
-      this.messageModel
-        // eslint-disable-next-line unicorn/no-array-callback-reference
-        .find(messageQuery)
-        // eslint-disable-next-line unicorn/no-array-sort
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate('senderId', 'username avatar'),
-      this.messageModel.countDocuments({
-        chatId: new Types.ObjectId(chatId),
-      }),
-    ]);
+    // Get messages (limit + 1 to determine hasMore)
+    const messages = await this.messageModel
+      // eslint-disable-next-line unicorn/no-array-callback-reference
+      .find(messageQuery)
+      // eslint-disable-next-line unicorn/no-array-sort
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
+      .populate('senderId', 'username avatar');
+
+    const hasMore = messages.length > limit;
+    const items = messages;
+
+    if (hasMore) {
+      items.pop();
+    }
 
     return {
       // eslint-disable-next-line n/no-unsupported-features/es-syntax
-      items: messages.toReversed(), // Return in chronological order
+      items: items.toReversed(), // Return in chronological order
       total,
-      page,
+      page: 1, // Not used for cursor pagination
       limit,
-      hasMore: skip + messages.length < total,
+      hasMore,
     };
   }
 
