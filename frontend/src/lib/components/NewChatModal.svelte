@@ -3,6 +3,7 @@
 	import { usersApi } from '$lib/api/users';
 	import { chatsStore } from '$lib/stores/chats';
 	import type { IUser } from '@shared/index';
+	import { ChevronRight } from './icons';
 
 	interface Props {
 		isOpen: boolean;
@@ -90,18 +91,7 @@
 							<span class="username">{user.username}</span>
 							<span class="email">{user.email}</span>
 						</div>
-						<svg
-							class="arrow"
-							xmlns="http://www.w3.org/2000/svg"
-							width="18"
-							height="18"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg
-						>
+						<ChevronRight class="arrow" />
 					</button>
 				{/each}
 			{:else if searchQuery.length >= 2}

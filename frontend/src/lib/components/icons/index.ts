@@ -1,0 +1,12 @@
+export { default as Icon } from './Icon.svelte';
+export { default as Phone } from './Phone.svelte';
+export { default as MoreVertical } from './MoreVertical.svelte';
+export { default as MessageSquare } from './MessageSquare.svelte';
+export { default as Plus } from './Plus.svelte';
+export { default as Search } from './Search.svelte';
+export { default as Paperclip } from './Paperclip.svelte';
+export { default as Smile } from './Smile.svelte';
+export { default as Send } from './Send.svelte';
+export { default as X } from './X.svelte';
+export { default as ChevronRight } from './ChevronRight.svelte';
+export { default as LogOut } from './LogOut.svelte';

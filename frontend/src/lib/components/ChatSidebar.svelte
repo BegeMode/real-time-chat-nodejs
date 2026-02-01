@@ -2,6 +2,7 @@
 	import { chatsStore } from '$lib/stores/chats';
 	import { currentUser } from '$lib/stores/auth';
 	import NewChatModal from './NewChatModal.svelte';
+	import { Plus, Search } from './icons';
 
 	const { items, activeChatId, isLoading } = $derived($chatsStore);
 	const user = $derived($currentUser);
@@ -28,38 +29,13 @@
 	<div class="sidebar-header">
 		<h2>Chats</h2>
 		<button class="add-btn" onclick={handleAddChat} aria-label="Add new chat">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"
-				></line></svg
-			>
+			<Plus />
 		</button>
 	</div>
 
 	<div class="search-container">
 		<div class="search-wrapper">
-			<svg
-				class="search-icon"
-				xmlns="http://www.w3.org/2000/svg"
-				width="16"
-				height="16"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"
-				></line></svg
-			>
+			<Search class="search-icon" />
 			<input type="text" placeholder="Search chats..." />
 		</div>
 	</div>
