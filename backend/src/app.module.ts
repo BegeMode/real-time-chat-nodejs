@@ -44,10 +44,16 @@ import { ChatsModule } from './chats/chats.module.js';
     }),
     AuthModule,
     UsersModule,
-    SocketGatewayModule,
     ChatsModule,
+    // Load SocketGatewayModule only if we are in WEBSOCKETS or ALL mode
+    ...(process.env.SERVICE_TYPE === 'WEBSOCKETS' ||
+    process.env.SERVICE_TYPE === 'ALL' ||
+    !process.env.SERVICE_TYPE
+      ? [SocketGatewayModule]
+      : []),
   ],
-  controllers: [AppController],
+  // In WEBSOCKETS mode, we don't need HTTP controllers
+  controllers: process.env.SERVICE_TYPE === 'WEBSOCKETS' ? [] : [AppController],
   providers: [AppService],
 })
 export class AppModule {}

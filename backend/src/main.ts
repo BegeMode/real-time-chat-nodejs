@@ -20,8 +20,12 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Use pino logger
-  app.useLogger(app.get<Logger>(Logger));
+  const logger = app.get<Logger>(Logger);
+  app.useLogger(logger);
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
+
+  const serviceType = process.env.SERVICE_TYPE ?? 'ALL';
+  logger.log(`Starting backend in ${serviceType} mode`);
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -32,7 +36,9 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  logger.log(`Server is running on port ${port.toString()}`);
 }
 
 // eslint-disable-next-line unicorn/prefer-top-level-await
