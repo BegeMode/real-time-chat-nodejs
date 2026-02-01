@@ -17,6 +17,7 @@ import {
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
   PubSubNewMessagePayload,
+  PubSubUserTypingPayload,
 } from '@shared/index.js';
 import { PubSubService } from '@socket-gateway/pub-sub.service.js';
 import { Model, Types } from 'mongoose';
@@ -392,5 +393,37 @@ export class ChatsService {
       PubSubChannels.CHAT_DELETED,
       pubSubPayload,
     );
+  }
+
+  /**
+   * Handle user typing status
+   */
+  async handleTyping(
+    userId: string,
+    chatId: string,
+    isTyping: boolean,
+  ): Promise<void> {
+    const chat = await this.chatModel.findById(chatId);
+
+    if (!chat) {
+      return;
+    }
+
+    const isParticipant = chat.members.some(
+      (p) => p.user.toString() === userId,
+    );
+
+    if (!isParticipant) {
+      return;
+    }
+
+    const pubSubPayload: PubSubUserTypingPayload = {
+      userId,
+      chatId,
+      isTyping,
+      receiverIds: chat.members.map((p) => p.user.toString()),
+    };
+
+    await this.pubSubService.publish(PubSubChannels.USER_TYPING, pubSubPayload);
   }
 }

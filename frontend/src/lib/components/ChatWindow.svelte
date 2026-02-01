@@ -1,14 +1,33 @@
 <script lang="ts">
-	import { activeChat } from '$lib/stores/chats';
+	import { activeChat, chatsStore } from '$lib/stores/chats';
 	import { currentUser } from '$lib/stores/auth';
 	import { messagesStore } from '$lib/stores/messages';
+	import { socketStore } from '$lib/stores/socket';
+	import { SocketEvents, type IUser } from '@shared/index';
 	import ChatEditor from './ChatEditor.svelte';
 	import { Phone, MoreVertical, MessageSquare } from './icons';
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 
 	const chat = $derived($activeChat);
 	const user = $derived($currentUser);
 	const otherMember = $derived(chat?.members.find((m) => m.user._id !== user?._id));
+
+	const typingIds = $derived($chatsStore.typingUsers[chat?._id || ''] || []);
+
+	const otherTypingUsers = $derived.by(() => {
+		if (!chat) return [];
+		return typingIds
+			.filter((id) => id !== user?._id)
+			.map((userId) => chat.members.find((m) => m.user._id === userId)?.user)
+			.filter(Boolean) as IUser[];
+	});
+
+	// Auto-scroll when indicator appears
+	$effect(() => {
+		if (otherTypingUsers.length > 0) {
+			scrollToBottom();
+		}
+	});
 
 	let scrollContainer = $state<HTMLDivElement>();
 	let hiddenItem = $state<HTMLDivElement>();
@@ -87,6 +106,14 @@
 		}
 	}
 
+	function handleTyping(isTyping: boolean) {
+		if (chat?._id) {
+			socketStore.emit(isTyping ? SocketEvents.TYPING_START : SocketEvents.TYPING_STOP, {
+				chatId: chat._id
+			});
+		}
+	}
+
 	function isDateItem(item: any): item is import('$lib/stores/messages').IDateItem {
 		return item && item.type === 'date';
 	}
@@ -151,10 +178,26 @@
 						</div>
 					{/if}
 				{/each}
+				{#if otherTypingUsers.length > 0}
+					<div class="typing-indicator">
+						<div class="dots">
+							<span></span>
+							<span></span>
+							<span></span>
+						</div>
+						<span class="typing-text">
+							{otherTypingUsers.length === 1
+								? `${otherTypingUsers[0].username} is typing...`
+								: `${otherTypingUsers.length} people are typing...`}
+						</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 
-		<ChatEditor onSend={handleSendMessage} />
+		{#key chat._id}
+			<ChatEditor onSend={handleSendMessage} onTyping={handleTyping} />
+		{/key}
 	{:else}
 		<div class="no-chat-selected">
 			<div class="empty-icon">
@@ -341,6 +384,51 @@
 		margin-top: 4px;
 		text-align: right;
 		opacity: 0.7;
+	}
+
+	.typing-indicator {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+		padding: var(--spacing-1) var(--spacing-2);
+		margin-bottom: var(--spacing-2);
+	}
+
+	.dots {
+		display: flex;
+		gap: 3px;
+	}
+
+	.dots span {
+		width: 6px;
+		height: 6px;
+		background: var(--color-gray-400);
+		border-radius: 50%;
+		animation: bounce 1.4s infinite ease-in-out both;
+	}
+
+	.dots span:nth-child(1) {
+		animation-delay: -0.32s;
+	}
+	.dots span:nth-child(2) {
+		animation-delay: -0.16s;
+	}
+
+	@keyframes bounce {
+		0%,
+		80%,
+		100% {
+			transform: scale(0);
+		}
+		40% {
+			transform: scale(1);
+		}
+	}
+
+	.typing-text {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		font-style: italic;
 	}
 
 	.no-chat-selected {

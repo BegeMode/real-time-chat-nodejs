@@ -1,17 +1,54 @@
 <script lang="ts">
 	import { Paperclip, Smile, Send } from './icons';
+	import { onDestroy } from 'svelte';
+
 	interface Props {
 		onSend: (content: string) => void;
+		onTyping?: (isTyping: boolean) => void;
 	}
 
-	let { onSend }: Props = $props();
+	let { onSend, onTyping }: Props = $props();
 	let content = $state('');
+	let isTyping = $state(false);
+	let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function handleInput() {
+		if (!isTyping) {
+			isTyping = true;
+			onTyping?.(true);
+		}
+
+		if (typingTimeout) {
+			clearTimeout(typingTimeout);
+		}
+
+		typingTimeout = setTimeout(() => {
+			isTyping = false;
+			onTyping?.(false);
+		}, 3000);
+	}
+
+	onDestroy(() => {
+		if (isTyping) {
+			onTyping?.(false);
+		}
+		if (typingTimeout) {
+			clearTimeout(typingTimeout);
+		}
+	});
 
 	function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (content.trim()) {
 			onSend(content);
 			content = '';
+			if (isTyping) {
+				isTyping = false;
+				onTyping?.(false);
+				if (typingTimeout) {
+					clearTimeout(typingTimeout);
+				}
+			}
 		}
 	}
 
@@ -33,6 +70,7 @@
 			<textarea
 				bind:value={content}
 				onkeydown={handleKeydown}
+				oninput={handleInput}
 				placeholder="Type a message..."
 				rows="1"
 			></textarea>

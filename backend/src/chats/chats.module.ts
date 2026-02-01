@@ -1,5 +1,5 @@
 import { AuthModule } from '@auth/auth.module.js';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SocketGatewayModule } from '@socket-gateway/socket-gateway.module.js';
 
@@ -15,7 +15,7 @@ import { MessageSchema } from './models/message.js';
       { name: 'Chat', schema: ChatSchema },
     ]),
     AuthModule,
-    SocketGatewayModule,
+    forwardRef(() => SocketGatewayModule),
   ],
   controllers: [ChatsController],
   providers: [ChatsService],

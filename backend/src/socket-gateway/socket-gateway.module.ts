@@ -1,6 +1,7 @@
 import { AuthModule } from '@auth/auth.module.js';
+import { ChatsModule } from '@chats/chats.module.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PubSubService } from '@socket-gateway/pub-sub.service.js';
@@ -12,6 +13,7 @@ import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
 @Module({
   imports: [
     AuthModule,
+    forwardRef(() => ChatsModule),
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

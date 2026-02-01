@@ -84,6 +84,17 @@ function createSocketStore() {
 				chatsStore.setUserStatus(payload.userId, false);
 			});
 
+			// Typing listeners
+			socket.on(SocketEvents.TYPING_START, async (payload: { chatId: string; userId: string }) => {
+				const { chatsStore } = await import('./chats');
+				chatsStore.setTyping(payload.chatId, payload.userId, true);
+			});
+
+			socket.on(SocketEvents.TYPING_STOP, async (payload: { chatId: string; userId: string }) => {
+				const { chatsStore } = await import('./chats');
+				chatsStore.setTyping(payload.chatId, payload.userId, false);
+			});
+
 			return socket;
 		},
 

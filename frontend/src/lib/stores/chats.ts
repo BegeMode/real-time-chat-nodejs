@@ -1,14 +1,13 @@
 import { writable, derived } from 'svelte/store';
 import type { IChat, IMessage, IUser } from '@shared/index';
 import { chatsApi } from '$lib/api/chats';
-import { socketStore } from './socket';
-import { SocketEvents } from '@shared/index';
 
 interface ChatsState {
 	items: IChat<IUser>[];
 	activeChatId: string | null;
 	isLoading: boolean;
 	error: string | null;
+	typingUsers: Record<string, string[]>; // chatId -> list of userIds
 }
 
 function createChatsStore() {
@@ -16,7 +15,8 @@ function createChatsStore() {
 		items: [],
 		activeChatId: null,
 		isLoading: false,
-		error: null
+		error: null,
+		typingUsers: {}
 	});
 
 	return {
@@ -100,6 +100,32 @@ function createChatsStore() {
 					return { ...chat, members };
 				});
 				return { ...s, items };
+			});
+		},
+
+		/**
+		 * Update typing status
+		 */
+		setTyping(chatId: string, userId: string, isTyping: boolean) {
+			update((s) => {
+				const currentTyping = s.typingUsers[chatId] || [];
+				let newTyping: string[];
+
+				if (isTyping) {
+					if (currentTyping.includes(userId)) return s;
+					newTyping = [...currentTyping, userId];
+				} else {
+					if (!currentTyping.includes(userId)) return s;
+					newTyping = currentTyping.filter((id) => id !== userId);
+				}
+
+				return {
+					...s,
+					typingUsers: {
+						...s.typingUsers,
+						[chatId]: newTyping
+					}
+				};
 			});
 		}
 	};

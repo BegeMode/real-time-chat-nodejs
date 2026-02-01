@@ -1,7 +1,8 @@
 import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
 import { IJwtPayload } from '@app-types/jwt-payload.js';
+import { ChatsService } from '@chats/chats.service.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
-import { Logger, UseGuards } from '@nestjs/common';
+import { forwardRef, Inject, Logger, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -43,6 +44,8 @@ export class SocketGatewayService
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly pubSubService: PubSubService,
+    @Inject(forwardRef(() => ChatsService))
+    private readonly chatsService: ChatsService,
   ) {
     super();
   }
@@ -181,17 +184,32 @@ export class SocketGatewayService
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage(SocketEvents.TYPING_START)
-  handleTypingStart(
+  async handleTypingStart(
     @MessageBody() payload: { chatId: string },
     @ConnectedSocket() client: Socket,
-  ): void {
+  ): Promise<void> {
     const authClient = client as IAuthenticatedSocket;
+    const userId = authClient.userId;
 
-    // We don't broadcast here directly anymore, we expect the API to handle the logic
-    // OR if you want direct bridge, we could, but let's stick to your architecture
-    this.logger.debug(
-      `User ${authClient.userId} is typing in ${payload.chatId}`,
-    );
+    if (userId) {
+      await this.chatsService.handleTyping(userId, payload.chatId, true);
+      this.logger.debug(`User ${userId} started typing in ${payload.chatId}`);
+    }
+  }
+
+  @UseGuards(SocketAuthGuard)
+  @SubscribeMessage(SocketEvents.TYPING_STOP)
+  async handleTypingStop(
+    @MessageBody() payload: { chatId: string },
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    const authClient = client as IAuthenticatedSocket;
+    const userId = authClient.userId;
+
+    if (userId) {
+      await this.chatsService.handleTyping(userId, payload.chatId, false);
+      this.logger.debug(`User ${userId} stopped typing in ${payload.chatId}`);
+    }
   }
 
   private extractToken(client: Socket): string | null {

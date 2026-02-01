@@ -14,11 +14,6 @@ export enum SocketEvents {
   MESSAGE_SENT = 'messageSent',
   MESSAGE_ERROR = 'messageError',
 
-  // Room events
-  JOIN_ROOM = 'joinRoom',
-  LEAVE_ROOM = 'leaveRoom',
-  ROOM_JOINED = 'roomJoined',
-
   // User presence events
   USER_ONLINE = 'userOnline',
   USER_OFFLINE = 'userOffline',
