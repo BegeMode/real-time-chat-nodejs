@@ -5,13 +5,59 @@ import { socketStore } from './socket';
 import { SocketEvents } from '@shared/index';
 import { chatsStore } from './chats';
 
+export interface IDateItem {
+	_id: string;
+	type: 'date';
+	text: string;
+}
+
 interface MessagesState {
 	[chatId: string]: {
-		items: IMessage<IUser>[];
+		items: Array<IMessage<IUser> | IDateItem>;
 		isLoading: boolean;
 		hasMore: boolean;
 		error: string | null;
 	};
+}
+
+/**
+ * Helper to group messages by date
+ */
+function groupMessages(
+	items: Array<IMessage<IUser> | IDateItem>
+): Array<IMessage<IUser> | IDateItem> {
+	// Filter out existing date dividers
+	const rawMessages = items.filter(
+		(item): item is IMessage<IUser> => !('type' in item && item.type === 'date')
+	);
+
+	// Sort messages by date to ensure they are in order
+	rawMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+	const result: Array<IMessage<IUser> | IDateItem> = [];
+	let lastDate: string | null = null;
+
+	for (const msg of rawMessages) {
+		const date = new Date(msg.createdAt);
+		const dateStr = date.toDateString();
+
+		if (dateStr !== lastDate) {
+			result.push({
+				_id: `date-${date.getTime()}`,
+				type: 'date',
+				text: date.toLocaleDateString('en-US', {
+					day: 'numeric',
+					month: 'long',
+					year: 'numeric'
+				})
+			});
+			lastDate = dateStr;
+		}
+
+		result.push(msg);
+	}
+
+	return result;
 }
 
 function createMessagesStore() {
@@ -45,9 +91,9 @@ function createMessagesStore() {
 				update((s) => ({
 					...s,
 					[chatId]: {
-						items,
+						items: groupMessages(items),
 						isLoading: false,
-						hasMore: items.length >= 50, // basic check
+						hasMore: response.hasMore ?? items.length >= 50,
 						error: null
 					}
 				}));
@@ -84,7 +130,7 @@ function createMessagesStore() {
 					...s,
 					[chatId]: {
 						...chatMessages,
-						items: [...chatMessages.items, message]
+						items: groupMessages([...chatMessages.items, message])
 					}
 				};
 			});

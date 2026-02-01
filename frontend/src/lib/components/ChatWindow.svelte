@@ -40,6 +40,10 @@
 			scrollToBottom();
 		}
 	}
+
+	function isDateItem(item: any): item is import('$lib/stores/messages').IDateItem {
+		return item && item.type === 'date';
+	}
 </script>
 
 <main class="chat-window">
@@ -99,20 +103,27 @@
 				{#if isLoading && chatMessages.length === 0}
 					<div class="loading-messages">Loading messages...</div>
 				{/if}
-				{#each chatMessages as msg (msg._id)}
-					{@const senderId = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId?._id}
-					{@const isMe = senderId === user?._id}
-					<div class="message-wrapper" class:me={isMe}>
-						<div class="message-bubble">
-							<div class="message-content">{msg.text}</div>
-							<div class="message-time">
-								{new Date(msg.createdAt).toLocaleTimeString([], {
-									hour: '2-digit',
-									minute: '2-digit'
-								})}
+				{#each chatMessages as item (item._id)}
+					{#if isDateItem(item)}
+						<div class="date-separator">
+							<span>{item.text}</span>
+						</div>
+					{:else}
+						{@const msg = item}
+						{@const senderId = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId?._id}
+						{@const isMe = senderId === user?._id}
+						<div class="message-wrapper" class:me={isMe}>
+							<div class="message-bubble">
+								<div class="message-content">{msg.text}</div>
+								<div class="message-time">
+									{new Date(msg.createdAt).toLocaleTimeString([], {
+										hour: '2-digit',
+										minute: '2-digit'
+									})}
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 				{/each}
 			</div>
 		</div>
@@ -239,6 +250,34 @@
 		max-width: 800px;
 		width: 100%;
 		margin: 0 auto;
+	}
+
+	.date-separator {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: var(--spacing-4) 0;
+		position: relative;
+	}
+
+	.date-separator::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: var(--color-border);
+		z-index: 1;
+	}
+
+	.date-separator span {
+		background: var(--color-chat-bg);
+		padding: 0 var(--spacing-4);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		font-weight: var(--font-weight-medium);
+		position: relative;
+		z-index: 2;
 	}
 
 	.message-wrapper {
