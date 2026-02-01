@@ -12,7 +12,7 @@ RUN cd shared && (yarn install --frozen-lockfile || yarn install)
 
 # 2. Build shared
 COPY shared/ ./shared/
-RUN cd shared && yarn build
+RUN cd shared && yarn build && cp -r dist/* .
 
 # 3. Install dependencies for backend
 COPY backend/package.json backend/yarn.lock ./backend/

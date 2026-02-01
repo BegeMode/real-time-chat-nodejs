@@ -35,7 +35,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   async validate(
     request: Request,
     payload: IJwtPayload,
-  ): Promise<IJwtRefreshPayload> {
+  ): Promise<IJwtRefreshPayload & { _id: string }> {
     const refreshToken = request.cookies.refreshToken as string | undefined;
 
     if (!refreshToken) {
@@ -50,6 +50,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     return {
       ...payload,
+      _id: payload.sub,
       refreshToken,
     };
   }

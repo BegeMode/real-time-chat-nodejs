@@ -50,9 +50,6 @@ services:
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/chat-app
       - REDIS_URL=redis://redis:6379
-      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-your-super-secret-access-key}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
-      - FRONTEND_URL=http://localhost:5173
     deploy:
       resources:
         limits:
@@ -80,9 +77,6 @@ services:
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/chat-app
       - REDIS_URL=redis://redis:6379
-      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-your-super-secret-access-key}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
-      - FRONTEND_URL=http://localhost:5173
     deploy:
       resources:
         limits:

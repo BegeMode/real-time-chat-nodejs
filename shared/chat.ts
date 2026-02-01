@@ -1,5 +1,5 @@
-import type { IMessage } from "@shared/message";
-import { IChatMember } from "@shared/chatMember";
+import type { IMessage } from "./message.js";
+import { IChatMember } from "./chatMember.js";
 
 export interface IChat<T = string> {
   _id: string;

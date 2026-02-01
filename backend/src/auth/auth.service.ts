@@ -105,9 +105,19 @@ export class AuthService {
     userId: string,
     refreshToken: string,
   ): Promise<{ accessToken: string }> {
+    this.logger.debug(`Refreshing tokens for userId: ${userId}`);
+
     const user = await this.usersService.findById(userId);
 
-    if (!user || !user.refreshToken) {
+    if (!user) {
+      this.logger.warn(`Refresh failed: User ${userId} not found`);
+      throw new UnauthorizedException('Access denied');
+    }
+
+    if (!user.refreshToken) {
+      this.logger.warn(
+        `Refresh failed: No refresh token stored for user ${userId}`,
+      );
       throw new UnauthorizedException('Access denied');
     }
 
@@ -118,6 +128,9 @@ export class AuthService {
     );
 
     if (!isRefreshTokenValid) {
+      this.logger.warn(
+        `Refresh failed: Invalid refresh token for user ${userId}`,
+      );
       throw new UnauthorizedException('Access denied');
     }
 
@@ -130,6 +143,8 @@ export class AuthService {
       secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       expiresIn: '1h',
     });
+
+    this.logger.debug(`Tokens successfully refreshed for user ${userId}`);
 
     return { accessToken };
   }

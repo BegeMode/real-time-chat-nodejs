@@ -1,4 +1,4 @@
-import type { IUser } from "@shared/user";
+import type { IUser } from "./user.js";
 
 export interface IAuthResponse {
   user: IUser;
