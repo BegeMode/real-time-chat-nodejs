@@ -8,5 +8,6 @@ export { default as Paperclip } from './Paperclip.svelte';
 export { default as Smile } from './Smile.svelte';
 export { default as Send } from './Send.svelte';
 export { default as X } from './X.svelte';
+export { default as Camera } from './Camera.svelte';
 export { default as ChevronRight } from './ChevronRight.svelte';
 export { default as LogOut } from './LogOut.svelte';

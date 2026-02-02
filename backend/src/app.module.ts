@@ -1,15 +1,19 @@
+import path from 'node:path';
+
 import { AuthModule } from '@auth/auth.module.js';
+import { ChatsModule } from '@chats/chats.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { SocketGatewayModule } from '@socket-gateway/socket-gateway.module.js';
+import { StoriesModule } from '@stories/stories.module.js';
 import { UsersModule } from '@users/users.module.js';
 import { LoggerModule } from 'nestjs-pino';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { ChatsModule } from './chats/chats.module.js';
 
 @Module({
   imports: [
@@ -44,9 +48,14 @@ import { ChatsModule } from './chats/chats.module.js';
       }),
       inject: [ConfigService],
     }),
+    ServeStaticModule.forRoot({
+      rootPath: path.join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
     AuthModule,
     UsersModule,
     ChatsModule,
+    StoriesModule,
     // Load SocketGatewayModule only if we are in WEBSOCKETS or ALL mode
     ...(process.env.SERVICE_TYPE === 'WEBSOCKETS' ||
     process.env.SERVICE_TYPE === 'ALL' ||

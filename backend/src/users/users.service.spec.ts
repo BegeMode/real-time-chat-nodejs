@@ -1,8 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { getModelToken } from '@nestjs/mongoose';
-import { UsersService } from '@users/users.service.js';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { User } from '@users/models/user.js';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { UsersService } from '@users/users.service.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('UsersService', () => {
   let service: UsersService;

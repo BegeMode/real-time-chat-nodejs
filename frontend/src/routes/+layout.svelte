@@ -3,6 +3,7 @@
 	import '$lib/styles/variables.css';
 	import { onMount } from 'svelte';
 	import { authApi } from '$lib/api/auth';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
 
 	let { children } = $props();
 	let isInitialized = $state(false);
@@ -21,6 +22,7 @@
 
 {#if isInitialized}
 	{@render children()}
+	<ToastContainer />
 {:else}
 	<div class="loading-screen">
 		<div class="loading-spinner"></div>

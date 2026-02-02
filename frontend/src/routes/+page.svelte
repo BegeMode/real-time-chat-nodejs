@@ -6,6 +6,7 @@
 	import { authApi } from '$lib/api/auth';
 	import ChatSidebar from '$lib/components/ChatSidebar.svelte';
 	import ChatWindow from '$lib/components/ChatWindow.svelte';
+	import StoryViewer from '$lib/components/StoryViewer.svelte';
 	import { MessageSquare, LogOut } from '$lib/components/icons';
 
 	// Access store properties directly using $derived
@@ -72,6 +73,7 @@
 			<ChatSidebar />
 			<ChatWindow />
 		</div>
+		<StoryViewer />
 	</div>
 {:else}
 	<div class="loading-screen">

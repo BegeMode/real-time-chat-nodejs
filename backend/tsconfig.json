@@ -30,6 +30,7 @@
       "@auth/*": ["./src/auth/*"],
       "@users/*": ["./src/users/*"],
       "@chats/*": ["./src/chats/*"],
+      "@stories/*": ["./src/stories/*"],
       "@constants/*": ["./src/constants/*"],
       "@socket-gateway/*": ["./src/socket-gateway/*"]
     }

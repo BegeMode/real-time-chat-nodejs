@@ -15,11 +15,19 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { IAuthResponse, IUser } from '@shared/index.js';
 import type { UserDocument } from '@users/models/user.js';
 import { UsersService } from '@users/users.service.js';
 import type { Response } from 'express';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   private logger = new Logger(AuthController.name, { timestamp: true });
@@ -31,6 +39,16 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or user already exists',
+  })
   async register(
     @Body() registerDto: RegisterDto,
     @Res({ passthrough: true }) response: Response,
@@ -55,6 +73,16 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged in successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials',
+  })
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -80,6 +108,15 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(JwtRefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Access token refreshed successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired refresh token',
+  })
   async refresh(
     @AuthUser('_id') userId: string,
     @AuthUser('refreshToken') refreshToken: string,
@@ -94,6 +131,12 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged out successfully',
+  })
   async logout(
     @AuthUser('_id') userId: string,
     @Res({ passthrough: true }) response: Response,
@@ -108,6 +151,16 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns current user information',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
   getMe(@AuthUser() user: UserDocument): IUser {
     return this.usersService.toUserResponse(user);
   }

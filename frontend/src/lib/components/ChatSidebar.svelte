@@ -2,6 +2,10 @@
 	import { chatsStore } from '$lib/stores/chats.svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import NewChatModal from './NewChatModal.svelte';
+	import StoriesBar from './StoriesBar.svelte';
+	import Modal from './Modal.svelte';
+	import StoryRecorder from './StoryRecorder.svelte';
+	import { storiesStore } from '$lib/stores/stories.svelte';
 	import { Plus, Search } from './icons';
 
 	// Access store properties directly using $derived
@@ -11,6 +15,7 @@
 	const user = $derived(authStore.currentUser);
 
 	let isNewChatModalOpen = $state(false);
+	let isRecordingModalOpen = $state(false);
 
 	function selectChat(id: string) {
 		chatsStore.setActiveChat(id);
@@ -18,6 +23,15 @@
 
 	function handleAddChat() {
 		isNewChatModalOpen = true;
+	}
+
+	function handleAddStory() {
+		isRecordingModalOpen = true;
+	}
+
+	function handleSaveStory(blob: Blob, duration: number) {
+		storiesStore.uploadStory(blob, duration);
+		isRecordingModalOpen = false;
 	}
 
 	function formatTime(date: Date | string) {
@@ -28,6 +42,17 @@
 
 <NewChatModal bind:isOpen={isNewChatModalOpen} onClose={() => (isNewChatModalOpen = false)} />
 
+<Modal
+	bind:isOpen={isRecordingModalOpen}
+	onClose={() => (isRecordingModalOpen = false)}
+	title="Record Story"
+>
+	<StoryRecorder
+		onSave={handleSaveStory}
+		onCancel={() => (isRecordingModalOpen = false)}
+	/>
+</Modal>
+
 <aside class="sidebar">
 	<div class="sidebar-header">
 		<h2>Chats</h2>
@@ -35,6 +60,8 @@
 			<Plus />
 		</button>
 	</div>
+
+	<StoriesBar onAddStory={handleAddStory} />
 
 	<div class="search-container">
 		<div class="search-wrapper">

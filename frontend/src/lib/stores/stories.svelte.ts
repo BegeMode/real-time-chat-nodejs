@@ -1,0 +1,98 @@
+import { apiClient } from '$lib/api/client';
+import { toastStore } from './toasts.svelte';
+import type { IStory, IUserStories } from '$lib/../../../shared/story';
+
+class StoriesStore {
+	#items = $state<IUserStories[]>([]);
+	#isLoading = $state(false);
+	#activeUserIndex = $state<number | null>(null);
+	#activeStoryIndex = $state(0);
+
+	get items() {
+		return this.#items;
+	}
+	get isLoading() {
+		return this.#isLoading;
+	}
+	get activeUserStories() {
+		return this.#activeUserIndex !== null ? this.#items[this.#activeUserIndex] : null;
+	}
+	get activeStory() {
+		const userStories = this.activeUserStories;
+		return userStories ? userStories.stories[this.#activeStoryIndex] : null;
+	}
+	get activeStoryIndex() {
+		return this.#activeStoryIndex;
+	}
+
+	async fetchStories() {
+		this.#isLoading = true;
+		try {
+			const response = await apiClient.get<IUserStories[]>('/stories');
+			this.#items = response.data;
+		} catch (error) {
+			console.error('Failed to fetch stories:', error);
+		} finally {
+			this.#isLoading = false;
+		}
+	}
+
+	async uploadStory(blob: Blob, duration: number) {
+		const formData = new FormData();
+		formData.append('video', blob, 'story.webm');
+		formData.append('duration', duration.toString());
+
+		try {
+			await apiClient.post('/stories', formData, {
+				headers: { 'Content-Type': 'multipart/form-data' }
+			});
+			toastStore.success('Story uploaded successfully!');
+			await this.fetchStories();
+		} catch (error) {
+			console.error('Failed to upload story:', error);
+			toastStore.error(
+				'Failed to upload story: ' +
+					((error as { response: { data: { message: string } } }).response?.data?.message ||
+						(error as Error).message)
+			);
+			throw error;
+		}
+	}
+
+	openStories(userIndex: number) {
+		this.#activeUserIndex = userIndex;
+		this.#activeStoryIndex = 0;
+	}
+
+	closeStories() {
+		this.#activeUserIndex = null;
+		this.#activeStoryIndex = 0;
+	}
+
+	nextStory() {
+		if (this.#activeUserIndex === null) return;
+
+		const userStories = this.#items[this.#activeUserIndex];
+		if (this.#activeStoryIndex < userStories.stories.length - 1) {
+			this.#activeStoryIndex++;
+		} else if (this.#activeUserIndex < this.#items.length - 1) {
+			this.#activeUserIndex++;
+			this.#activeStoryIndex = 0;
+		} else {
+			this.closeStories();
+		}
+	}
+
+	prevStory() {
+		if (this.#activeUserIndex === null) return;
+
+		if (this.#activeStoryIndex > 0) {
+			this.#activeStoryIndex--;
+		} else if (this.#activeUserIndex > 0) {
+			this.#activeUserIndex--;
+			this.#activeStoryIndex = this.#items[this.#activeUserIndex].stories.length - 1;
+		}
+	}
+}
+
+export const storiesStore = new StoriesStore();

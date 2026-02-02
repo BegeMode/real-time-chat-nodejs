@@ -59,6 +59,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - uploads_data:/app/backend/uploads
     networks:
       - chat-network
     restart: unless-stopped
@@ -112,6 +114,7 @@ services:
 volumes:
   mongodb_data:
   redis_data:
+  uploads_data:
 
 networks:
   chat-network:

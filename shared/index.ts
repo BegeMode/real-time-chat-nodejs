@@ -7,3 +7,4 @@ export * from './registerDto.js';
 export * from './authResponse.js';
 export * from './constants/events.js';
 export * from './paginated.js';
+export * from './story.js';

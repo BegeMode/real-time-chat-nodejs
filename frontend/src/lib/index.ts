@@ -3,6 +3,7 @@ export { authStore } from './stores/auth.svelte';
 export { socketStore } from './stores/socket.svelte';
 export { chatsStore } from './stores/chats.svelte';
 export { messagesStore } from './stores/messages.svelte';
+export { storiesStore } from './stores/stories.svelte';
 
 // API
 export { apiClient } from './api/client';
