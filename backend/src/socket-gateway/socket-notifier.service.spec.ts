@@ -11,8 +11,8 @@ import type {
 } from '@shared/index.js';
 import { PubSubChannels, SocketEvents } from '@shared/index.js';
 import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
-import { SocketNotifierService } from '@socket-gateway/socket-notifier.service.js';
 import { SocketTransport } from '@socket-gateway/interfaces/socket-transport.service.js';
+import { SocketNotifierService } from '@socket-gateway/socket-notifier.service.js';
 import { beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
 
 describe('SocketNotifierService', () => {
@@ -138,6 +138,23 @@ describe('SocketNotifierService', () => {
         ['u1', 'u2'],
         SocketEvents.MESSAGE_DELETED,
         expect.objectContaining({ messageId: 'msg123' }),
+      );
+    });
+  });
+
+  describe('CHAT_DELETED handling', () => {
+    it('should emit chat deletion to all receivers', () => {
+      const payload = {
+        chatId: 'chat456',
+        receiverIds: ['u1', 'u2'],
+      };
+
+      handlers[PubSubChannels.CHAT_DELETED](payload);
+
+      expect(transport.emitToUsers).toHaveBeenCalledWith(
+        ['u1', 'u2'],
+        SocketEvents.CHAT_DELETED,
+        { chatId: 'chat456' },
       );
     });
   });

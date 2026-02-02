@@ -9,6 +9,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AuthService } from '@auth/auth.service.js';
+import { InternalEvents } from '@constants/internal-events.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -152,6 +153,42 @@ describe('SocketGatewayService', () => {
           { userId: 'user123' },
         );
       });
+    });
+  });
+
+  describe('Typing Events', () => {
+    it('should emit typing start event to EventEmitter2', () => {
+      const socket = createMockSocket();
+      socket.userId = 'user123';
+      const payload = { chatId: 'chat456' };
+
+      gateway.handleTypingStart(payload, socket);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        InternalEvents.SOCKET_TYPING,
+        {
+          userId: 'user123',
+          chatId: 'chat456',
+          isTyping: true,
+        },
+      );
+    });
+
+    it('should emit typing stop event to EventEmitter2', () => {
+      const socket = createMockSocket();
+      socket.userId = 'user123';
+      const payload = { chatId: 'chat456' };
+
+      gateway.handleTypingStop(payload, socket);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        InternalEvents.SOCKET_TYPING,
+        {
+          userId: 'user123',
+          chatId: 'chat456',
+          isTyping: false,
+        },
+      );
     });
   });
 });
