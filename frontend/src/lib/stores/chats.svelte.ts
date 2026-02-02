@@ -71,6 +71,16 @@ class ChatsStore {
 	}
 
 	/**
+	 * Add a chat to the list (used for socket notifications)
+	 */
+	addChat(chat: IChat<IUser>) {
+		const exists = this.items.find((c) => c._id === chat._id);
+		if (!exists) {
+			this.items = [chat, ...this.items];
+		}
+	}
+
+	/**
 	 * Handle new message from socket
 	 */
 	addMessage(chatId: string, message: IMessage<IUser>) {

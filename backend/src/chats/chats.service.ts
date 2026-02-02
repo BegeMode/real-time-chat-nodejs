@@ -16,9 +16,11 @@ import {
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import {
+  IChat,
   IPaginated,
   IUser,
   PubSubChannels,
+  PubSubChatCreatedPayload,
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
   PubSubNewMessagePayload,
@@ -242,6 +244,17 @@ export class ChatsService {
 
       return m;
     });
+
+    // Publish to Pub/Sub to notify other participants
+    const pubSubPayload: PubSubChatCreatedPayload = {
+      chat: chatObj as unknown as IChat<IUser>,
+      receiverIds: populatedChat.members.map((m) => m.user._id.toString()),
+    };
+
+    await this.pubSubService.publish(
+      PubSubChannels.CHAT_CREATED,
+      pubSubPayload,
+    );
 
     return chatObj as unknown as ChatDocument;
   }

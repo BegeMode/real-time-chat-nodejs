@@ -1,4 +1,6 @@
 import { IStory } from "@shared/story.js";
+import { IChat } from "@shared/chat.js";
+import { IUser } from "@shared/user.js";
 
 /**
  * Socket.io Event Names
@@ -26,6 +28,8 @@ export enum SocketEvents {
 
   // Deletion events
   MESSAGE_DELETED = 'messageDeleted',
+  // Chat events
+  NEW_CHAT = 'newChat',
   CHAT_DELETED = 'chatDeleted',
 
   // Story events
@@ -88,6 +92,11 @@ export interface PubSubMessageDeletedPayload {
   chatId: string;
   userId?: string;
   forEveryone: boolean;
+  receiverIds: string[];
+}
+
+export interface PubSubChatCreatedPayload {
+  chat: IChat<IUser>;
   receiverIds: string[];
 }
 

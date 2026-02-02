@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { browser } from '$app/environment';
-import { SocketEvents, type IMessage, type IUser } from '@shared/index';
+import { SocketEvents, type IMessage, type IUser, type IChat } from '@shared/index';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
@@ -26,7 +26,7 @@ class SocketStore {
 		const token = authStore.getAccessToken();
 		if (!token) return;
 
-		console.log('🔌 Connecting to socket...');
+		console.log('Connecting to socket...');
 
 		this.socket = io(SOCKET_URL, {
 			auth: { token },
@@ -36,37 +36,45 @@ class SocketStore {
 		});
 
 		this.socket.on(SocketEvents.CONNECT, () => {
-			console.log('✅ Socket connected');
+			console.log('Socket connected');
 			this.isConnected = true;
 			this.error = null;
 		});
 
 		this.socket.on(SocketEvents.DISCONNECT, (reason) => {
-			console.log('❌ Socket disconnected:', reason);
+			console.log('Socket disconnected:', reason);
 			this.isConnected = false;
 		});
 
 		this.socket.on(SocketEvents.CONNECT_ERROR, (error) => {
-			console.error('⚠️ Socket connection error:', error);
+			console.error('Socket connection error:', error);
 			this.error = error.message;
 			this.isConnected = false;
 		});
 
 		this.socket.on(SocketEvents.UNAUTHORIZED, (payload) => {
-			console.error('🚫 Socket unauthorized:', payload);
+			console.error('Socket unauthorized:', payload);
 			this.error = 'Unauthorized';
 			this.isConnected = false;
 		});
 
 		// Message listeners
 		this.socket.on(SocketEvents.NEW_MESSAGE, async (payload: IMessage<IUser>) => {
-			console.log('📩 New message received:', payload);
+			console.log('New message received:', payload);
 			const { messagesStore } = await import('./messages.svelte');
 			messagesStore.addMessage(payload.chatId, payload);
 		});
 
+		this.socket.on(SocketEvents.NEW_CHAT, async (payload: IChat<IUser>) => {
+			console.log('New chat received:', payload);
+			const { chatsStore } = await import('./chats.svelte');
+			const { storiesStore } = await import('./stories.svelte');
+			chatsStore.addChat(payload);
+			storiesStore.fetchStories();
+		});
+
 		this.socket.on(SocketEvents.MESSAGE_ERROR, (payload: { message: string }) => {
-			console.error('⚠️ Message error:', payload);
+			console.error('Message error:', payload);
 			this.error = payload.message;
 		});
 
@@ -100,7 +108,7 @@ class SocketStore {
 
 		// Story listeners
 		this.socket.on(SocketEvents.NEW_STORY, async (payload: { story: any }) => {
-			console.log('📱 New story received:', payload);
+			console.log('New story received:', payload);
 			const { storiesStore } = await import('./stories.svelte');
 			storiesStore.addStory(payload.story);
 		});
@@ -113,7 +121,7 @@ class SocketStore {
 	 */
 	disconnect() {
 		if (this.socket) {
-			console.log('🔌 Disconnecting socket...');
+			console.log('Disconnecting socket...');
 			this.socket.disconnect();
 			this.socket = null;
 			this.isConnected = false;
@@ -135,7 +143,7 @@ class SocketStore {
 		if (this.socket?.connected) {
 			this.socket.emit(event, payload);
 		} else {
-			console.warn(`⚠️ Cannot emit ${event}: socket not connected`);
+			console.warn(`Cannot emit ${event}: socket not connected`);
 		}
 	}
 

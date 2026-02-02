@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   PubSubChannels,
+  PubSubChatCreatedPayload,
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
   PubSubNewMessagePayload,
@@ -27,6 +28,11 @@ export class SocketNotifierService implements OnModuleInit {
     // Subscribe to new message events
     this.pubSubService.onMessage(PubSubChannels.NEW_MESSAGE, (payload) => {
       this.handleNewMessage(payload as PubSubNewMessagePayload);
+    });
+
+    // Subscribe to chat creation
+    this.pubSubService.onMessage(PubSubChannels.CHAT_CREATED, (payload) => {
+      this.handleChatCreated(payload as PubSubChatCreatedPayload);
     });
 
     // Subscribe to typing status
@@ -69,6 +75,14 @@ export class SocketNotifierService implements OnModuleInit {
       payload.receiverIds,
       SocketEvents.NEW_MESSAGE,
       socketPayload,
+    );
+  }
+
+  private handleChatCreated(payload: PubSubChatCreatedPayload): void {
+    this.transport.emitToUsers(
+      payload.receiverIds,
+      SocketEvents.NEW_CHAT,
+      payload.chat,
     );
   }
 
