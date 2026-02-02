@@ -6,18 +6,18 @@ export const chatsApi = {
 	 * Get all chats for the current user
 	 */
 	async getChats(): Promise<IChat<IUser>[]> {
-		const response = await apiClient.get<{ success: boolean; data: IChat<IUser>[] }>('/chats');
-		return response.data.data;
+		const response = await apiClient.get<IChat<IUser>[]>('/chats');
+		return response.data;
 	},
 
 	/**
 	 * Get or create a chat with user(s)
 	 */
 	async getOrCreateChat(userIds: string[]): Promise<IChat<IUser>> {
-		const response = await apiClient.post<{ success: boolean; data: IChat<IUser> }>('/chats', {
+		const response = await apiClient.post<IChat<IUser>>('/chats', {
 			userIds
 		});
-		return response.data.data;
+		return response.data;
 	},
 
 	/**
@@ -27,21 +27,18 @@ export const chatsApi = {
 		const response = await apiClient.get(`/chats/messages/${chatId}`, {
 			params: { limit, before }
 		});
-		return response.data.data;
+		return response.data;
 	},
 
 	/**
 	 * Send a new message
 	 */
 	async sendMessage(chatId: string, text: string): Promise<IMessage<IUser>> {
-		const response = await apiClient.post<{ success: boolean; data: IMessage<IUser> }>(
-			'/chats/messages',
-			{
-				chatId,
-				text
-			}
-		);
-		return response.data.data;
+		const response = await apiClient.post<IMessage<IUser>>('/chats/messages', {
+			chatId,
+			text
+		});
+		return response.data;
 	},
 
 	/**

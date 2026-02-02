@@ -41,9 +41,6 @@ export class UsersController {
 
     const users = await this.usersService.searchUsers(query, userId);
 
-    return {
-      success: true,
-      data: users.map((user) => this.usersService.toUserResponse(user)),
-    };
+    return users.map((user) => this.usersService.toUserResponse(user));
   }
 }

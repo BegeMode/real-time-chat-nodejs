@@ -52,10 +52,7 @@ export class ChatsController {
       `Found ${chats.length.toString()} chats for user: ${userId}`,
     );
 
-    return {
-      success: true,
-      data: chats,
-    };
+    return chats;
   }
 
   /**
@@ -72,15 +69,7 @@ export class ChatsController {
     @Body() createChatDto: CreateChatDto,
     @AuthUser('_id') userId: string,
   ) {
-    const chat = await this.chatsService.getOrCreateChat(
-      userId,
-      createChatDto.userIds,
-    );
-
-    return {
-      success: true,
-      data: chat,
-    };
+    return this.chatsService.getOrCreateChat(userId, createChatDto.userIds);
   }
 
   /**
@@ -98,10 +87,6 @@ export class ChatsController {
     @AuthUser('_id') userId: string,
   ) {
     await this.chatsService.deleteChat(userId, chatId);
-
-    return {
-      success: true,
-    };
   }
 
   /**
@@ -118,15 +103,7 @@ export class ChatsController {
     @Body() createMessageDto: CreateMessageDto,
     @AuthUser('_id') userId: string,
   ) {
-    const message = await this.chatsService.createMessage(
-      userId,
-      createMessageDto,
-    );
-
-    return {
-      success: true,
-      data: message,
-    };
+    return this.chatsService.createMessage(userId, createMessageDto);
   }
 
   /**
@@ -144,13 +121,8 @@ export class ChatsController {
     @Param('chatId') chatId: string,
     @Query() query: GetMessagesQueryDto,
     @AuthUser('_id') userId: string,
-  ): Promise<{ success: boolean; data: IPaginated<MessageDocument> }> {
-    const result = await this.chatsService.getMessages(userId, chatId, query);
-
-    return {
-      success: true,
-      data: result,
-    };
+  ): Promise<IPaginated<MessageDocument>> {
+    return this.chatsService.getMessages(userId, chatId, query);
   }
 
   /**
@@ -175,9 +147,5 @@ export class ChatsController {
   ) {
     const isForEveryone = forEveryone === 'true';
     await this.chatsService.deleteMessage(userId, messageId, isForEveryone);
-
-    return {
-      success: true,
-    };
   }
 }
