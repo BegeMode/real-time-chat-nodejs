@@ -8,10 +8,9 @@ import {
   PubSubUserStatusPayload,
   PubSubUserTypingPayload,
 } from '@shared/index.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
-
-import { PubSubService } from './pub-sub.service.js';
 
 type RedisPayload =
   | PubSubNewMessagePayload

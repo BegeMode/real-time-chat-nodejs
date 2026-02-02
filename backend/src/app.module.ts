@@ -1,6 +1,7 @@
 import { AuthModule } from '@auth/auth.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SocketGatewayModule } from '@socket-gateway/socket-gateway.module.js';
 import { UsersModule } from '@users/users.module.js';
@@ -13,6 +14,7 @@ import { ChatsModule } from './chats/chats.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         transport:

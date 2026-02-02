@@ -3,12 +3,17 @@ import { GetMessagesQueryDto } from '@chats/dto/get-messages-query.dto.js';
 import { ChatDocument } from '@chats/models/chat.js';
 import { MessageDocument } from '@chats/models/message.js';
 import {
+  InternalEvents,
+  type ISocketTypingPayload,
+} from '@constants/internal-events.js';
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IPaginated,
@@ -19,7 +24,7 @@ import {
   PubSubNewMessagePayload,
   PubSubUserTypingPayload,
 } from '@shared/index.js';
-import { PubSubService } from '@socket-gateway/pub-sub.service.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { Model, Types } from 'mongoose';
 
 @Injectable()
@@ -398,6 +403,12 @@ export class ChatsService {
   /**
    * Handle user typing status
    */
+  @OnEvent(InternalEvents.SOCKET_TYPING)
+  async handleTypingEvent(payload: ISocketTypingPayload): Promise<void> {
+    const { userId, chatId, isTyping } = payload;
+    await this.handleTyping(userId, chatId, isTyping);
+  }
+
   async handleTyping(
     userId: string,
     chatId: string,

@@ -10,9 +10,9 @@ import type {
   PubSubUserTypingPayload,
 } from '@shared/index.js';
 import { PubSubChannels, SocketEvents } from '@shared/index.js';
-import { PubSubService } from '@socket-gateway/pub-sub.service.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { SocketNotifierService } from '@socket-gateway/socket-notifier.service.js';
-import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
+import { SocketTransport } from '@socket-gateway/interfaces/socket-transport.service.js';
 import { beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
 
 describe('SocketNotifierService', () => {

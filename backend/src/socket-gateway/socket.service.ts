@@ -1,9 +1,10 @@
 import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
 import { IJwtPayload } from '@app-types/jwt-payload.js';
-import { ChatsService } from '@chats/chats.service.js';
+import { InternalEvents } from '@constants/internal-events.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
-import { forwardRef, Inject, Logger, UseGuards } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
@@ -16,8 +17,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { PubSubChannels, SocketEvents } from '@shared/index.js';
-import { PubSubService } from '@socket-gateway/pub-sub.service.js';
-import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
+import { SocketTransport } from '@socket-gateway/interfaces/socket-transport.service.js';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
@@ -44,8 +45,7 @@ export class SocketGatewayService
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly pubSubService: PubSubService,
-    @Inject(forwardRef(() => ChatsService))
-    private readonly chatsService: ChatsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     super();
   }
@@ -184,30 +184,38 @@ export class SocketGatewayService
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage(SocketEvents.TYPING_START)
-  async handleTypingStart(
+  handleTypingStart(
     @MessageBody() payload: { chatId: string },
     @ConnectedSocket() client: Socket,
-  ): Promise<void> {
+  ): void {
     const authClient = client as IAuthenticatedSocket;
     const userId = authClient.userId;
 
     if (userId) {
-      await this.chatsService.handleTyping(userId, payload.chatId, true);
+      this.eventEmitter.emit(InternalEvents.SOCKET_TYPING, {
+        userId,
+        chatId: payload.chatId,
+        isTyping: true,
+      });
       this.logger.debug(`User ${userId} started typing in ${payload.chatId}`);
     }
   }
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage(SocketEvents.TYPING_STOP)
-  async handleTypingStop(
+  handleTypingStop(
     @MessageBody() payload: { chatId: string },
     @ConnectedSocket() client: Socket,
-  ): Promise<void> {
+  ): void {
     const authClient = client as IAuthenticatedSocket;
     const userId = authClient.userId;
 
     if (userId) {
-      await this.chatsService.handleTyping(userId, payload.chatId, false);
+      this.eventEmitter.emit(InternalEvents.SOCKET_TYPING, {
+        userId,
+        chatId: payload.chatId,
+        isTyping: false,
+      });
       this.logger.debug(`User ${userId} stopped typing in ${payload.chatId}`);
     }
   }

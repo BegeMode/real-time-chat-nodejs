@@ -8,8 +8,8 @@ import {
   PubSubUserTypingPayload,
   SocketEvents,
 } from '@shared/index.js';
-import { PubSubService } from '@socket-gateway/pub-sub.service.js';
-import { SocketTransport } from '@socket-gateway/socket-transport.service.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
+import { SocketTransport } from '@socket-gateway/interfaces/socket-transport.service.js';
 
 @Injectable()
 export class SocketNotifierService implements OnModuleInit {

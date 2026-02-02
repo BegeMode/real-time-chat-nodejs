@@ -1,3 +1,5 @@
+/* eslint-disable unicorn/no-useless-undefined */
+/* eslint-disable @typescript-eslint/dot-notation */
 /* eslint-disable unicorn/consistent-function-scoping */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
@@ -9,10 +11,12 @@
 import { AuthService } from '@auth/auth.service.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { SocketEvents } from '@shared/index.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { SocketGatewayService } from '@socket-gateway/socket.service.js';
 import { PinoLogger } from 'nestjs-pino';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +25,8 @@ describe('SocketGatewayService', () => {
   let gateway: SocketGatewayService;
   let jwtService: any;
   let configService: any;
+  let pubSubService: any;
+  let eventEmitter: any;
   let authService: any;
 
   beforeEach(async () => {
@@ -29,6 +35,15 @@ describe('SocketGatewayService', () => {
     };
     configService = {
       get: vi.fn().mockReturnValue('secret'),
+    };
+    pubSubService = {
+      isUserOnline: vi.fn(),
+      setUserOnline: vi.fn().mockResolvedValue(true),
+      setUserOffline: vi.fn().mockResolvedValue(true),
+      publish: vi.fn(),
+    };
+    eventEmitter = {
+      emit: vi.fn(),
     };
     authService = {
       validateUser: vi.fn(),
@@ -39,8 +54,9 @@ describe('SocketGatewayService', () => {
         SocketGatewayService,
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
+        { provide: PubSubService, useValue: pubSubService },
+        { provide: EventEmitter2, useValue: eventEmitter },
         { provide: AuthService, useValue: authService },
-        { provide: SocketAuthGuard, useValue: {} },
         {
           provide: PinoLogger,
           useValue: {
@@ -52,9 +68,18 @@ describe('SocketGatewayService', () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(SocketAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     gateway = module.get<SocketGatewayService>(SocketGatewayService);
+
+    // Suppress logs during tests
+    vi.spyOn(gateway['logger'], 'error').mockImplementation(() => undefined);
+    vi.spyOn(gateway['logger'], 'warn').mockImplementation(() => undefined);
+    vi.spyOn(gateway['logger'], 'log').mockImplementation(() => undefined);
+    vi.spyOn(gateway['logger'], 'debug').mockImplementation(() => undefined);
 
     gateway.server = {
       to: vi.fn().mockReturnThis(),
@@ -121,10 +146,12 @@ describe('SocketGatewayService', () => {
       // Disconnect
       gateway.handleDisconnect(socket);
 
-      expect(gateway.server.emit).toHaveBeenCalledWith(
-        SocketEvents.USER_OFFLINE,
-        { userId: 'user123' },
-      );
+      await vi.waitFor(() => {
+        expect(gateway.server.emit).toHaveBeenCalledWith(
+          SocketEvents.USER_OFFLINE,
+          { userId: 'user123' },
+        );
+      });
     });
   });
 });
