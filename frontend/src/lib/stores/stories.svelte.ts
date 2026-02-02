@@ -64,7 +64,7 @@ class StoriesStore {
 	}
 
 	addStory(story: IStory) {
-		const userId = typeof story.userId === 'string' ? story.userId : story.userId._id;
+		const userId = typeof story.user === 'string' ? story.user : story.user._id;
 		const userIndex = this.#items.findIndex((item) => item.user._id === userId);
 
 		if (userIndex !== -1) {
@@ -74,10 +74,10 @@ class StoriesStore {
 				this.#items[userIndex].stories.push(story);
 				this.#items[userIndex].hasUnseen = true;
 			}
-		} else if (typeof story.userId !== 'string') {
+		} else if (typeof story.user !== 'string') {
 			// New user story group
 			this.#items.push({
-				user: story.userId,
+				user: story.user,
 				stories: [story],
 				hasUnseen: true
 			});

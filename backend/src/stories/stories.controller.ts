@@ -17,8 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { IUserStories } from '@shared/story.js';
-import { Story } from '@stories/models/story.js';
+import { IStory, IUserStories } from '@shared/story.js';
 import { StoriesService } from '@stories/stories.service.js';
 
 @ApiTags('stories')
@@ -40,7 +39,7 @@ export class StoriesController {
     @UploadedFile() file: Express.Multer.File,
     @Body('duration') duration: string,
     @AuthUser('_id') userId: string,
-  ): Promise<Story> {
+  ): Promise<IStory> {
     return this.storiesService.create(
       userId,
       file,

@@ -5,7 +5,11 @@ import path from 'node:path';
 import { ChatsService } from '@chats/chats.service.js';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { PubSubChannels, PubSubNewStoryPayload } from '@shared/index.js';
+import {
+  IStory,
+  PubSubChannels,
+  PubSubNewStoryPayload,
+} from '@shared/index.js';
 import { IUserStories } from '@shared/story.js';
 import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { Story, StoryDocument } from '@stories/models/story.js';
@@ -30,7 +34,7 @@ export class StoriesService {
     userId: string,
     file: Express.Multer.File,
     duration: number,
-  ): Promise<Story> {
+  ): Promise<IStory> {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     const fileName = `${userId}-${Date.now()}${path.extname(file.originalname)}`;
     const filePath = path.join(this.uploadPath, fileName);
@@ -53,26 +57,36 @@ export class StoriesService {
       .populate('user', 'username avatar')
       .exec();
 
-    if (!storyWithUser) return story;
+    if (!storyWithUser) {
+      throw new Error('Failed to create story with user info');
+    }
 
     // Notify users who have a chat with this user
     const receiverIds = await this.chatsService.getChatPartnerIds(userId);
+    const user = storyWithUser.user as unknown as UserDocument;
+
+    const storyPayload: IStory = {
+      _id: story._id.toString(),
+      user: {
+        _id: userId,
+        username: user.username,
+        avatar: user.avatar,
+        email: '', // Not used in frontend stories
+      },
+      videoUrl: story.videoUrl,
+      duration: story.duration,
+      createdAt: story.createdAt,
+    };
 
     const pubSubPayload: PubSubNewStoryPayload = {
       userId,
-      story: {
-        _id: story._id.toString(),
-        userId,
-        videoUrl: story.videoUrl,
-        duration: story.duration,
-        createdAt: story.createdAt,
-      },
+      story: storyPayload,
       receiverIds,
     };
 
     await this.pubSubService.publish(PubSubChannels.NEW_STORY, pubSubPayload);
 
-    return storyWithUser as Story;
+    return storyPayload;
   }
 
   async findAllGroupedByUser(): Promise<IUserStories[]> {
@@ -115,7 +129,7 @@ export class StoriesService {
         // Oldest story is first
         userGroup.stories.unshift({
           _id: story._id.toString(),
-          userId,
+          user: userId,
           videoUrl: story.videoUrl,
           duration: story.duration,
           createdAt: story.createdAt,

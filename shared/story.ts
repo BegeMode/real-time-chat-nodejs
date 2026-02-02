@@ -2,7 +2,7 @@ import { IUser } from './user.js';
 
 export interface IStory {
 	_id: string;
-	userId: string | IUser;
+	user: string | IUser;
 	videoUrl: string;
 	duration: number; // in seconds
 	createdAt: Date | string;
