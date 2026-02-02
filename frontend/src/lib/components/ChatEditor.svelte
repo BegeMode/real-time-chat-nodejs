@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { Paperclip, Smile, Send } from './icons';
 	import { onDestroy } from 'svelte';
+	import Spinner from './Spinner.svelte';
 
 	interface Props {
-		onSend: (content: string) => void;
+		onSend: (content: string) => Promise<void> | void;
 		onTyping?: (isTyping: boolean) => void;
 	}
 
 	let { onSend, onTyping }: Props = $props();
 	let content = $state('');
 	let isTyping = $state(false);
+	let isSending = $state(false);
 	let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	function handleInput() {
@@ -37,17 +39,25 @@
 		}
 	});
 
-	function handleSubmit(e: Event) {
+	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (content.trim()) {
-			onSend(content);
-			content = '';
-			if (isTyping) {
-				isTyping = false;
-				onTyping?.(false);
-				if (typingTimeout) {
-					clearTimeout(typingTimeout);
+		if (content.trim() && !isSending) {
+			const messageToSend = content;
+			isSending = true;
+			try {
+				await onSend(messageToSend);
+				content = '';
+				if (isTyping) {
+					isTyping = false;
+					onTyping?.(false);
+					if (typingTimeout) {
+						clearTimeout(typingTimeout);
+					}
 				}
+			} catch (err) {
+				console.error('Failed to send message:', err);
+			} finally {
+				isSending = false;
 			}
 		}
 	}
@@ -80,8 +90,17 @@
 			<Smile />
 		</button>
 
-		<button type="submit" class="send-btn" disabled={!content.trim()} aria-label="Send message">
-			<Send />
+		<button 
+			type="submit" 
+			class="send-btn" 
+			disabled={!content.trim() || isSending} 
+			aria-label="Send message"
+		>
+			{#if isSending}
+				<Spinner size="xs" color="white" />
+			{:else}
+				<Send />
+			{/if}
 		</button>
 	</form>
 </div>

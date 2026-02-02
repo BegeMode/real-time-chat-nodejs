@@ -437,4 +437,33 @@ export class ChatsService {
 
     await this.pubSubService.publish(PubSubChannels.USER_TYPING, pubSubPayload);
   }
+
+  /**
+   * Get all user IDs who have a chat with the specified user.
+   */
+  async getChatPartnerIds(userId: string): Promise<string[]> {
+    const chats = await this.chatModel.find({
+      members: {
+        $elemMatch: {
+          user: new Types.ObjectId(userId),
+          deletedAt: null,
+        },
+      },
+    });
+
+    const partnerIds = new Set<string>();
+
+    for (const chat of chats) {
+      for (const member of chat.members) {
+        const memberId = member.user.toString();
+
+        // Only include partners who have not deleted the chat
+        if (memberId !== userId && member.deletedAt === null) {
+          partnerIds.add(memberId);
+        }
+      }
+    }
+
+    return [...partnerIds];
+  }
 }

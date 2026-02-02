@@ -1,5 +1,6 @@
 import type { IChat, IMessage, IUser } from '@shared/index';
 import { chatsApi } from '$lib/api/chats';
+import { toastStore } from './toasts.svelte';
 
 /**
  * Chats Store using Svelte 5 Runes with class-based architecture
@@ -30,6 +31,7 @@ class ChatsStore {
 			this.isLoading = false;
 		} catch (err) {
 			this.error = (err as Error).message;
+			toastStore.error('Failed to load chats: ' + this.error);
 			this.isLoading = false;
 		}
 	}
@@ -62,6 +64,7 @@ class ChatsStore {
 			return chat;
 		} catch (err) {
 			this.error = (err as Error).message;
+			toastStore.error('Failed to create chat: ' + this.error);
 			this.isLoading = false;
 			throw err;
 		}

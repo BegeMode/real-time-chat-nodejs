@@ -104,9 +104,9 @@
 		}
 	});
 
-	function handleSendMessage(content: string) {
+	async function handleSendMessage(content: string) {
 		if (chat?._id) {
-			messagesStore.sendMessage(chat._id, content);
+			await messagesStore.sendMessage(chat._id, content);
 			scrollToBottom();
 		}
 	}

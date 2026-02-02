@@ -4,6 +4,7 @@ import {
   PubSubChatDeletedPayload,
   PubSubMessageDeletedPayload,
   PubSubNewMessagePayload,
+  PubSubNewStoryPayload,
   PubSubUserStatusPayload,
   PubSubUserTypingPayload,
   SocketEvents,
@@ -46,6 +47,11 @@ export class SocketNotifierService implements OnModuleInit {
     // Subscribe to chat deletion
     this.pubSubService.onMessage(PubSubChannels.CHAT_DELETED, (payload) => {
       this.handleChatDeleted(payload as PubSubChatDeletedPayload);
+    });
+
+    // Subscribe to new story events
+    this.pubSubService.onMessage(PubSubChannels.NEW_STORY, (payload) => {
+      this.handleNewStory(payload as PubSubNewStoryPayload);
     });
   }
 
@@ -100,6 +106,12 @@ export class SocketNotifierService implements OnModuleInit {
   private handleChatDeleted(payload: PubSubChatDeletedPayload): void {
     this.transport.emitToUsers(payload.receiverIds, SocketEvents.CHAT_DELETED, {
       chatId: payload.chatId,
+    });
+  }
+
+  private handleNewStory(payload: PubSubNewStoryPayload): void {
+    this.transport.emitToUsers(payload.receiverIds, SocketEvents.NEW_STORY, {
+      story: payload.story,
     });
   }
 }

@@ -4,7 +4,7 @@ export interface IStory {
 	_id: string;
 	userId: string | IUser;
 	videoUrl: string;
-	duration: number; // in seconds, max 15
+	duration: number; // in seconds
 	createdAt: Date | string;
 }
 

@@ -18,6 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { IUserStories } from '@shared/story.js';
+import { Story } from '@stories/models/story.js';
 import { StoriesService } from '@stories/stories.service.js';
 
 @ApiTags('stories')
@@ -39,9 +40,7 @@ export class StoriesController {
     @UploadedFile() file: Express.Multer.File,
     @Body('duration') duration: string,
     @AuthUser('_id') userId: string,
-    // Swagger has bug with models which has referenced models (Story -> User)
-    // so we return unknown
-  ): Promise<unknown> {
+  ): Promise<Story> {
     return this.storiesService.create(
       userId,
       file,

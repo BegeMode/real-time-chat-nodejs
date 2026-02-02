@@ -2,9 +2,12 @@ import * as fs from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { ChatsService } from '@chats/chats.service.js';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { PubSubChannels, PubSubNewStoryPayload } from '@shared/index.js';
 import { IUserStories } from '@shared/story.js';
+import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { Story, StoryDocument } from '@stories/models/story.js';
 import { UserDocument } from '@users/models/user.js';
 import { Model, Types } from 'mongoose';
@@ -15,6 +18,8 @@ export class StoriesService {
 
   constructor(
     @InjectModel(Story.name) private storyModel: Model<StoryDocument>,
+    private readonly chatsService: ChatsService,
+    private readonly pubSubService: PubSubService,
   ) {
     if (!fs.existsSync(this.uploadPath)) {
       fs.mkdirSync(this.uploadPath, { recursive: true });
@@ -35,18 +40,45 @@ export class StoriesService {
     const videoUrl = `/uploads/stories/${fileName}`;
 
     const newStory = new this.storyModel({
-      userId: new Types.ObjectId(userId),
+      user: new Types.ObjectId(userId),
       videoUrl,
       duration,
     });
 
-    return newStory.save();
+    const story = await newStory.save();
+
+    // Populate user info for the notification
+    const storyWithUser = await this.storyModel
+      .findById(story._id)
+      .populate('user', 'username avatar')
+      .exec();
+
+    if (!storyWithUser) return story;
+
+    // Notify users who have a chat with this user
+    const receiverIds = await this.chatsService.getChatPartnerIds(userId);
+
+    const pubSubPayload: PubSubNewStoryPayload = {
+      userId,
+      story: {
+        _id: story._id.toString(),
+        userId,
+        videoUrl: story.videoUrl,
+        duration: story.duration,
+        createdAt: story.createdAt,
+      },
+      receiverIds,
+    };
+
+    await this.pubSubService.publish(PubSubChannels.NEW_STORY, pubSubPayload);
+
+    return storyWithUser as Story;
   }
 
   async findAllGroupedByUser(): Promise<IUserStories[]> {
     const stories = await this.storyModel
       .find()
-      .populate('userId', 'username avatar')
+      .populate('user', 'username avatar')
       // eslint-disable-next-line unicorn/no-array-sort
       .sort({ createdAt: -1 })
       .exec();
@@ -55,7 +87,7 @@ export class StoriesService {
 
     // eslint-disable-next-line unicorn/no-array-for-each
     stories.forEach((story: StoryDocument) => {
-      const user = story.userId as unknown as UserDocument;
+      const user = story.user as unknown as UserDocument;
 
       if (user instanceof Types.ObjectId) {
         return;

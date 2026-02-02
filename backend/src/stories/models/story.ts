@@ -1,5 +1,4 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { User } from '@users/models/user.js';
 import { Document, Types } from 'mongoose';
 
 export type StoryDocument = Story & Document;
@@ -7,7 +6,7 @@ export type StoryDocument = Story & Document;
 @Schema({ timestamps: true })
 export class Story {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  userId!: Types.ObjectId | User;
+  user!: Types.ObjectId;
 
   @Prop({ required: true })
   videoUrl!: string;

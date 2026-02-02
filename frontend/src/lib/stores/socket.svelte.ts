@@ -98,6 +98,13 @@ class SocketStore {
 			}
 		);
 
+		// Story listeners
+		this.socket.on(SocketEvents.NEW_STORY, async (payload: { story: any }) => {
+			console.log('📱 New story received:', payload);
+			const { storiesStore } = await import('./stories.svelte');
+			storiesStore.addStory(payload.story);
+		});
+
 		return this.socket;
 	}
 

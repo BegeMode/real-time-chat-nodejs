@@ -29,9 +29,14 @@
 		isRecordingModalOpen = true;
 	}
 
-	function handleSaveStory(blob: Blob, duration: number) {
-		storiesStore.uploadStory(blob, duration);
-		isRecordingModalOpen = false;
+	async function handleSaveStory(blob: Blob, duration: number) {
+		try {
+			await storiesStore.uploadStory(blob, duration);
+			isRecordingModalOpen = false;
+		} catch (error) {
+			console.error('Failed to save story in sidebar:', error);
+			throw error; // Propagate to StoryRecorder to reset isSaving
+		}
 	}
 
 	function formatTime(date: Date | string) {

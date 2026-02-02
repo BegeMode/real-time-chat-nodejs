@@ -32,6 +32,9 @@ class StoriesStore {
 			this.#items = response.data;
 		} catch (error) {
 			console.error('Failed to fetch stories:', error);
+			toastStore.error(
+				'Failed to load stories: ' + (error instanceof Error ? error.message : String(error))
+			);
 		} finally {
 			this.#isLoading = false;
 		}
@@ -43,11 +46,12 @@ class StoriesStore {
 		formData.append('duration', duration.toString());
 
 		try {
-			await apiClient.post('/stories', formData, {
+			const response = await apiClient.post<IStory>('/stories', formData, {
 				headers: { 'Content-Type': 'multipart/form-data' }
 			});
 			toastStore.success('Story uploaded successfully!');
-			await this.fetchStories();
+
+			this.addStory(response.data);
 		} catch (error) {
 			console.error('Failed to upload story:', error);
 			toastStore.error(
@@ -56,6 +60,27 @@ class StoriesStore {
 						(error as Error).message)
 			);
 			throw error;
+		}
+	}
+
+	addStory(story: IStory) {
+		const userId = typeof story.userId === 'string' ? story.userId : story.userId._id;
+		const userIndex = this.#items.findIndex((item) => item.user._id === userId);
+
+		if (userIndex !== -1) {
+			// Check if story already exists
+			const storyExists = this.#items[userIndex].stories.some((s) => s._id === story._id);
+			if (!storyExists) {
+				this.#items[userIndex].stories.push(story);
+				this.#items[userIndex].hasUnseen = true;
+			}
+		} else if (typeof story.userId !== 'string') {
+			// New user story group
+			this.#items.push({
+				user: story.userId,
+				stories: [story],
+				hasUnseen: true
+			});
 		}
 	}
 

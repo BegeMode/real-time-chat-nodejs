@@ -1,5 +1,6 @@
 import type { IMessage, IUser } from '@shared/index';
 import { chatsApi } from '$lib/api/chats';
+import { toastStore } from './toasts.svelte';
 
 const PAGE_SIZE = 50;
 
@@ -130,12 +131,14 @@ class MessagesStore {
 				}
 			};
 		} catch (err) {
+			const message = (err as Error).message;
+			toastStore.error('Failed to load messages: ' + message);
 			this._chats = {
 				...this._chats,
 				[chatId]: {
 					...(this._chats[chatId] || { items: [], hasMore: false, error: null }),
 					isLoading: false,
-					error: (err as Error).message
+					error: message
 				}
 			};
 		}
@@ -178,12 +181,14 @@ class MessagesStore {
 				}
 			};
 		} catch (err) {
+			const message = (err as Error).message;
+			toastStore.error('Failed to load more messages: ' + message);
 			this._chats = {
 				...this._chats,
 				[chatId]: {
 					...chatState,
 					isLoading: false,
-					error: (err as Error).message
+					error: message
 				}
 			};
 		}
@@ -227,11 +232,13 @@ class MessagesStore {
 			await this.addMessage(chatId, message);
 			return message;
 		} catch (err) {
+			const message = (err as Error).message;
+			toastStore.error('Failed to send message: ' + message);
 			this._chats = {
 				...this._chats,
 				[chatId]: {
 					...(this._chats[chatId] || { items: [], isLoading: false, hasMore: false, error: null }),
-					error: (err as Error).message
+					error: message
 				}
 			};
 			throw err;

@@ -1,3 +1,5 @@
+import { IStory } from "@shared/story.js";
+
 /**
  * Socket.io Event Names
  * Used for type-safe communication between frontend and gateway
@@ -26,6 +28,9 @@ export enum SocketEvents {
   MESSAGE_DELETED = 'messageDeleted',
   CHAT_DELETED = 'chatDeleted',
 
+  // Story events
+  NEW_STORY = 'newStory',
+
   // Error events
   ERROR = 'error',
   UNAUTHORIZED = 'unauthorized',
@@ -49,6 +54,9 @@ export enum PubSubChannels {
   CHAT_CREATED = 'chat:created',
   CHAT_UPDATED = 'chat:updated',
   CHAT_DELETED = 'chat:deleted',
+
+  // Story channels
+  NEW_STORY = 'chat:new_story',
 }
 
 /**
@@ -86,5 +94,11 @@ export interface PubSubMessageDeletedPayload {
 export interface PubSubChatDeletedPayload {
   chatId: string;
   userId: string;
+  receiverIds: string[];
+}
+
+export interface PubSubNewStoryPayload {
+  userId: string;
+  story: IStory;
   receiverIds: string[];
 }

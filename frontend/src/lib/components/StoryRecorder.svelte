@@ -2,9 +2,10 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { Camera, X, Send } from './icons';
 	import { toastStore } from '$lib/stores/toasts.svelte';
+	import Spinner from './Spinner.svelte';
 
 	interface Props {
-		onSave: (blob: Blob, duration: number) => void;
+		onSave: (blob: Blob, duration: number) => Promise<void> | void;
 		onCancel: () => void;
 	}
 
@@ -19,6 +20,7 @@
 	let isRecording = $state(false);
 	let recordingTime = $state(0);
 	let recordedBlob = $state<Blob | null>(null);
+	let isSaving = $state(false);
 	let timerInterval: ReturnType<typeof setInterval>;
 
 	const MAX_DURATION = 15; // seconds
@@ -79,9 +81,16 @@
 		}
 	}
 
-	function handleSave() {
-		if (recordedBlob) {
-			onSave(recordedBlob, recordingTime);
+	async function handleSave() {
+		if (recordedBlob && !isSaving) {
+			isSaving = true;
+			try {
+				await onSave(recordedBlob, recordingTime);
+			} catch (err) {
+				console.error('Save failed:', err);
+			} finally {
+				isSaving = false;
+			}
 		}
 	}
 
@@ -195,11 +204,24 @@
 			{/if}
 		{:else}
 			<div class="action-buttons">
-				<button class="btn btn-secondary" onclick={handleRetry}>
+				<button 
+					class="btn btn-secondary" 
+					onclick={handleRetry}
+					disabled={isSaving}
+				>
 					<X /> Retry
 				</button>
-				<button class="btn btn-primary" onclick={handleSave}>
-					<Send /> Share Story
+				<button 
+					class="btn btn-primary" 
+					onclick={handleSave}
+					disabled={isSaving}
+				>
+					{#if isSaving}
+						<Spinner size="xs" color="white" />
+						Uploading...
+					{:else}
+						<Send /> Share Story
+					{/if}
 				</button>
 			</div>
 		{/if}
@@ -349,8 +371,14 @@
 		border-radius: var(--radius-lg);
 	}
 
-	.btn:hover {
+	.btn:hover:not(:disabled) {
 		transform: translateY(-2px);
 		box-shadow: var(--shadow-md);
+	}
+
+	.btn:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+		transform: none;
 	}
 </style>
