@@ -52,10 +52,7 @@
 	onClose={() => (isRecordingModalOpen = false)}
 	title="Record Story"
 >
-	<StoryRecorder
-		onSave={handleSaveStory}
-		onCancel={() => (isRecordingModalOpen = false)}
-	/>
+	<StoryRecorder onSave={handleSaveStory} onCancel={() => (isRecordingModalOpen = false)} />
 </Modal>
 
 <aside class="sidebar">
@@ -68,12 +65,12 @@
 
 	<StoriesBar onAddStory={handleAddStory} />
 
-	<div class="search-container">
+	<!-- <div class="search-container">
 		<div class="search-wrapper">
 			<Search class="search-icon" />
 			<input type="text" placeholder="Search chats..." />
 		</div>
-	</div>
+	</div> -->
 
 	<div class="chat-list">
 		{#if isLoading}

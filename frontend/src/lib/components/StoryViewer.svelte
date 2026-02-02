@@ -11,6 +11,14 @@
 	let videoElement: HTMLVideoElement | undefined = $state();
 	let progress = $state(0);
 	let animationFrame: number;
+	let videoHasError = $state(false);
+
+	$effect(() => {
+		// Reset error state when active story changes
+		if (activeStory) {
+			videoHasError = false;
+		}
+	});
 
 	const videoUrl = $derived(getApiUrl(activeStory?.videoUrl || ''));
 
@@ -53,14 +61,18 @@
 				<div class="progress-bars">
 					{#each activeUserStories.stories as _, i}
 						<div class="progress-bar-bg">
-							<div 
-								class="progress-bar-fill" 
-								style:width={i < activeStoryIndex ? '100%' : i === activeStoryIndex ? `${progress}%` : '0%'}
+							<div
+								class="progress-bar-fill"
+								style:width={i < activeStoryIndex
+									? '100%'
+									: i === activeStoryIndex
+										? `${progress}%`
+										: '0%'}
 							></div>
 						</div>
 					{/each}
 				</div>
-				
+
 				<div class="user-info">
 					<div class="avatar">
 						{activeUserStories.user.username[0].toUpperCase()}
@@ -74,18 +86,45 @@
 
 			<!-- Video Content -->
 			<div class="content-wrapper">
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<video
-					bind:this={videoElement}
-					src={videoUrl}
-					autoplay
-					playsinline
-					class="story-video"
-				></video>
+				{#if videoHasError}
+					<div class="error-message">
+						<span>Failed to load video</span>
+						<button
+							class="retry-btn"
+							onclick={() => {
+								videoHasError = false;
+							}}
+						>
+							Retry
+						</button>
+					</div>
+				{:else}
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video
+						bind:this={videoElement}
+						src={videoUrl}
+						autoplay
+						playsinline
+						class="story-video"
+						onerror={() => (videoHasError = true)}
+					></video>
+				{/if}
 
 				<!-- Navigation Zones -->
-				<div class="nav-zone left" onclick={handlePrev} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handlePrev()}></div>
-				<div class="nav-zone right" onclick={handleNext} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handleNext()}></div>
+				<div
+					class="nav-zone left"
+					onclick={handlePrev}
+					role="button"
+					tabindex="0"
+					onkeydown={(e) => e.key === 'Enter' && handlePrev()}
+				></div>
+				<div
+					class="nav-zone right"
+					onclick={handleNext}
+					role="button"
+					tabindex="0"
+					onkeydown={(e) => e.key === 'Enter' && handleNext()}
+				></div>
 			</div>
 
 			<!-- Controls (Optional, for desktop) -->
@@ -133,7 +172,7 @@
 		right: 0;
 		padding: var(--spacing-4);
 		z-index: 2;
-		background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
 	}
 
 	.progress-bars {
@@ -208,6 +247,31 @@
 		object-fit: contain;
 	}
 
+	.error-message {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--spacing-4);
+		color: #fff;
+		text-align: center;
+		padding: var(--spacing-6);
+	}
+
+	.retry-btn {
+		padding: var(--spacing-2) var(--spacing-4);
+		background: var(--color-primary);
+		color: white;
+		border: none;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-weight: var(--font-weight-semibold);
+		transition: transform 0.2s;
+	}
+
+	.retry-btn:hover {
+		transform: scale(1.05);
+	}
+
 	.nav-zone {
 		position: absolute;
 		top: 0;
@@ -217,8 +281,12 @@
 		z-index: 1;
 	}
 
-	.nav-zone.left { left: 0; }
-	.nav-zone.right { right: 0; }
+	.nav-zone.left {
+		left: 0;
+	}
+	.nav-zone.right {
+		right: 0;
+	}
 
 	.nav-btn {
 		position: absolute;
@@ -242,11 +310,17 @@
 		background: rgba(255, 255, 255, 0.2);
 	}
 
-	.nav-btn.prev { left: -60px; }
-	.nav-btn.next { right: -60px; }
+	.nav-btn.prev {
+		left: -60px;
+	}
+	.nav-btn.next {
+		right: -60px;
+	}
 
 	@media (max-width: 600px) {
-		.nav-btn { display: none; }
+		.nav-btn {
+			display: none;
+		}
 		.viewer-container {
 			height: 100vh;
 			border-radius: 0;
