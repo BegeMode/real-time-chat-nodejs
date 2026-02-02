@@ -53,7 +53,7 @@ export class StoriesController {
     status: 200,
     description: 'Returns all active stories grouped by user',
   })
-  getStories(): Promise<IUserStories[]> {
-    return this.storiesService.findAllGroupedByUser();
+  getStories(@AuthUser('_id') userId: string): Promise<IUserStories[]> {
+    return this.storiesService.findAllGroupedByUser(userId);
   }
 }

@@ -89,9 +89,14 @@ export class StoriesService {
     return storyPayload;
   }
 
-  async findAllGroupedByUser(): Promise<IUserStories[]> {
+  async findAllGroupedByUser(currentUserId: string): Promise<IUserStories[]> {
+    const partnerIds = await this.chatsService.getChatPartnerIds(currentUserId);
+    const allowedUserIds = [...partnerIds, currentUserId].map(
+      (id) => new Types.ObjectId(id),
+    );
+
     const stories = await this.storyModel
-      .find()
+      .find({ user: { $in: allowedUserIds } })
       .populate('user', 'username avatar')
       // eslint-disable-next-line unicorn/no-array-sort
       .sort({ createdAt: -1 })
