@@ -69,18 +69,18 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     // Verify password
     if (!user.password) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     // Generate tokens
@@ -109,14 +109,14 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`Refresh failed: User ${userId} not found`);
-      throw new UnauthorizedException('Access denied');
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
     if (!user.refreshToken) {
       this.logger.warn(
         `Refresh failed: No refresh token stored for user ${userId}`,
       );
-      throw new UnauthorizedException('Access denied');
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
     // Verify refresh token
@@ -124,7 +124,7 @@ export class AuthService {
       this.logger.warn(
         `Refresh failed: No refresh token stored for user ${userId}`,
       );
-      throw new UnauthorizedException('Access denied');
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
     const isRefreshTokenValid = await bcrypt.compare(
@@ -136,7 +136,7 @@ export class AuthService {
       this.logger.warn(
         `Refresh failed: Invalid refresh token for user ${userId}`,
       );
-      throw new UnauthorizedException('Access denied');
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
     // Generate new access token

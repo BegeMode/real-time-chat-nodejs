@@ -64,11 +64,17 @@ function createApiClient(): AxiosInstance {
 				return Promise.reject(error);
 			}
 
-			// If this is a refresh request - don't try to update the token again
-			if (originalRequest.url?.includes('/auth/refresh')) {
-				authStore.logout();
-				if (browser) {
-					goto('/login');
+			// Don't try to refresh token for auth endpoints
+			if (
+				originalRequest.url?.includes('/auth/login') ||
+				originalRequest.url?.includes('/auth/register') ||
+				originalRequest.url?.includes('/auth/refresh')
+			) {
+				if (originalRequest.url?.includes('/auth/refresh')) {
+					authStore.logout();
+					if (browser) {
+						goto('/login');
+					}
 				}
 				return Promise.reject(error);
 			}
