@@ -93,23 +93,26 @@ services:
     restart: unless-stopped
 
   # Frontend (optional - for production)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: chat-app-frontend
-  #   ports:
-  #     - "5173:5173"
-  #   env_file:
-  #     - ./frontend/.env 
-  #   environment:
-  #     - VITE_API_URL=http://localhost:3000
-  #     - VITE_WS_URL=http://localhost:3001
-  #   depends_on:
-  #     - api
-  #     - websockets
-  #   networks:
-  #     - chat-network
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:3000
+        - VITE_SOCKET_URL=http://localhost:3001
+    container_name: chat-app-frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env 
+    environment:
+      - VITE_API_URL=http://localhost:3000
+      - VITE_SOCKET_URL=http://localhost:3001
+    depends_on:
+      - api
+      - websockets
+    networks:
+      - chat-network
 
 volumes:
   mongodb_data:

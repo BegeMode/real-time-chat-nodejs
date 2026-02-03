@@ -16,7 +16,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
-import { SocketEvents } from '@shared/index.js';
+import { PubSubChannels, SocketEvents } from '@shared/index.js';
 import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { SocketGatewayService } from '@socket-gateway/socket.service.js';
 import { PinoLogger } from 'nestjs-pino';
@@ -117,9 +117,9 @@ describe('SocketGatewayService', () => {
         expect.any(Object),
       );
       expect(socket.join).toHaveBeenCalledWith('user:user123');
-      expect(gateway.server.emit).toHaveBeenCalledWith(
-        SocketEvents.USER_ONLINE,
-        { userId: 'user123' },
+      expect(pubSubService.publish).toHaveBeenCalledWith(
+        PubSubChannels.USER_STATUS,
+        { userId: 'user123', isOnline: true },
       );
     });
 
@@ -148,9 +148,9 @@ describe('SocketGatewayService', () => {
       gateway.handleDisconnect(socket);
 
       await vi.waitFor(() => {
-        expect(gateway.server.emit).toHaveBeenCalledWith(
-          SocketEvents.USER_OFFLINE,
-          { userId: 'user123' },
+        expect(pubSubService.publish).toHaveBeenCalledWith(
+          PubSubChannels.USER_STATUS,
+          { userId: 'user123', isOnline: false },
         );
       });
     });

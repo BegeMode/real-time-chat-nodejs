@@ -27,10 +27,12 @@ vi.mock('ioredis', () => {
     publish = vi.fn().mockResolvedValue(undefined);
     incr = vi.fn();
     decr = vi.fn();
-    sadd = vi.fn().mockResolvedValue(1);
-    srem = vi.fn().mockResolvedValue(1);
-    sismember = vi.fn().mockResolvedValue(1);
-    smembers = vi.fn().mockResolvedValue([]);
+    set = vi.fn().mockResolvedValue('OK');
+    zadd = vi.fn().mockResolvedValue(1);
+    zrem = vi.fn().mockResolvedValue(1);
+    zscore = vi.fn().mockResolvedValue(null);
+    zrange = vi.fn().mockResolvedValue([]);
+    zremrangebyscore = vi.fn().mockResolvedValue(1);
     del = vi.fn().mockResolvedValue(1);
     quit = vi.fn().mockResolvedValue(undefined);
 
@@ -62,6 +64,7 @@ describe('RedisService', () => {
     logger = {
       setContext: vi.fn(),
       info: vi.fn(),
+      warn: vi.fn(),
       error: vi.fn(),
       debug: vi.fn(),
     };
@@ -144,37 +147,51 @@ describe('RedisService', () => {
     const userId = 'user123';
     const refCountKey = `presence:refcount:${userId}`;
 
-    it('should return true and add to online set when it is the first connection', async () => {
+    it('should return true and add to online ZSET when it is the first connection', async () => {
       mocks.publisher.incr.mockResolvedValue(1);
+      mocks.publisher.zadd.mockResolvedValue(1);
 
       const isOnline = await service.setUserOnline(userId);
 
       expect(isOnline).toBe(true);
       expect(mocks.publisher.incr).toHaveBeenCalledWith(refCountKey);
-      expect(mocks.publisher.sadd).toHaveBeenCalledWith(
+      expect(mocks.publisher.zadd).toHaveBeenCalledWith(
         'presence:online_users',
+        expect.any(Number),
         userId,
       );
     });
 
+    it('should detect stale counter and reset to 1 if user was NOT in ZSET', async () => {
+      mocks.publisher.incr.mockResolvedValue(5); // Stale counter
+      mocks.publisher.zadd.mockResolvedValue(1); // Newly added to ZSET
+
+      const isOnline = await service.setUserOnline(userId);
+
+      expect(isOnline).toBe(true);
+      expect(mocks.publisher.set).toHaveBeenCalledWith(refCountKey, 1);
+    });
+
     it('should return false when it is NOT the first connection', async () => {
       mocks.publisher.incr.mockResolvedValue(2);
+      // Already in ZSET
+      mocks.publisher.zadd.mockResolvedValue(0);
 
       const isOnline = await service.setUserOnline(userId);
 
       expect(isOnline).toBe(false);
-      expect(mocks.publisher.sadd).not.toHaveBeenCalled();
+      // Still calls zadd to update timestamp
+      expect(mocks.publisher.zadd).toHaveBeenCalled();
     });
 
-    it('should return true and remove from online set when it is the last connection', async () => {
+    it('should return true and remove from online ZSET when it is the last connection', async () => {
       mocks.publisher.decr.mockResolvedValue(0);
-      mocks.publisher.srem.mockResolvedValue(1);
 
       const isOffline = await service.setUserOffline(userId);
 
       expect(isOffline).toBe(true);
       expect(mocks.publisher.decr).toHaveBeenCalledWith(refCountKey);
-      expect(mocks.publisher.srem).toHaveBeenCalledWith(
+      expect(mocks.publisher.zrem).toHaveBeenCalledWith(
         'presence:online_users',
         userId,
       );
@@ -187,21 +204,71 @@ describe('RedisService', () => {
       const isOffline = await service.setUserOffline(userId);
 
       expect(isOffline).toBe(false);
-      expect(mocks.publisher.srem).not.toHaveBeenCalled();
+      expect(mocks.publisher.zrem).not.toHaveBeenCalled();
     });
   });
 
   describe('isUserOnline', () => {
-    it('should return true if user is in online set', async () => {
-      mocks.publisher.sismember.mockResolvedValue(1);
+    it('should return true if user in ZSET and timestamp is fresh', async () => {
+      const now = Date.now();
+      mocks.publisher.zscore.mockResolvedValue(now.toString());
+
       const isOnline = await service.isUserOnline('u1');
       expect(isOnline).toBe(true);
+      expect(mocks.publisher.zscore).toHaveBeenCalledWith(
+        'presence:online_users',
+        'u1',
+      );
     });
 
-    it('should return false if user is NOT in online set', async () => {
-      mocks.publisher.sismember.mockResolvedValue(0);
+    it('should return false if user score is too old', async () => {
+      const oldTime = Date.now() - 300_000; // 5 mins ago
+      mocks.publisher.zscore.mockResolvedValue(oldTime.toString());
+
       const isOnline = await service.isUserOnline('u1');
       expect(isOnline).toBe(false);
+    });
+
+    it('should return false if user score is missing', async () => {
+      mocks.publisher.zscore.mockResolvedValue(null);
+
+      const isOnline = await service.isUserOnline('u1');
+      expect(isOnline).toBe(false);
+    });
+  });
+
+  describe('refreshUsersStatus', () => {
+    it('should update timestamps for multiple users', async () => {
+      await service.refreshUsersStatus(['u1', 'u2']);
+
+      expect(mocks.publisher.zadd).toHaveBeenCalledWith(
+        'presence:online_users',
+        expect.any(Number),
+        'u1',
+        expect.any(Number),
+        'u2',
+      );
+    });
+
+    it('should do nothing if list is empty', async () => {
+      await service.refreshUsersStatus([]);
+      expect(mocks.publisher.zadd).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getOnlineUserIds', () => {
+    it('should cleanup old users and return range', async () => {
+      mocks.publisher.zrange.mockResolvedValue(['u1', 'u2']);
+
+      const ids = await service.getOnlineUserIds();
+
+      expect(ids).toEqual(['u1', 'u2']);
+      expect(mocks.publisher.zremrangebyscore).toHaveBeenCalled();
+      expect(mocks.publisher.zrange).toHaveBeenCalledWith(
+        'presence:online_users',
+        0,
+        -1,
+      );
     });
   });
 });

@@ -9,7 +9,7 @@ backend/test
 backend/README.md
 
 # Frontend specific ignores (avoid copying it to backend image)
-frontend
+# frontend (removed to allow building frontend from root context)
 
 # OS/IDE junk
 .DS_Store

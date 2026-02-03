@@ -44,93 +44,104 @@
 		animationFrame = requestAnimationFrame(updateProgress);
 	}
 
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'ArrowRight') handleNext();
+		if (e.key === 'ArrowLeft') handlePrev();
+		if (e.key === 'Escape') handleClose();
+	}
+
 	onMount(() => {
 		animationFrame = requestAnimationFrame(updateProgress);
+		window.addEventListener('keydown', handleKeyDown);
 	});
 
 	onDestroy(() => {
 		cancelAnimationFrame(animationFrame);
+		window.removeEventListener('keydown', handleKeyDown);
 	});
 </script>
 
 {#if activeUserStories && activeStory}
-	<div class="viewer-overlay">
-		<div class="viewer-container">
-			<!-- Header with progress bars -->
-			<div class="viewer-header">
-				<div class="progress-bars">
-					{#each activeUserStories.stories as _, i}
-						<div class="progress-bar-bg">
-							<div
-								class="progress-bar-fill"
-								style:width={i < activeStoryIndex
-									? '100%'
-									: i === activeStoryIndex
-										? `${progress}%`
-										: '0%'}
-							></div>
-						</div>
-					{/each}
-				</div>
+	<div class="viewer-overlay" onclick={handleClose} role="presentation">
+		<div class="viewer-wrapper" onclick={(e) => e.stopPropagation()} role="presentation">
+			<!-- Controls (Desktop) -->
+			<button class="nav-btn prev" onclick={handlePrev} aria-label="Previous story">
+				<ChevronRight />
+			</button>
 
-				<div class="user-info">
-					<div class="avatar">
-						{activeUserStories.user.username[0].toUpperCase()}
+			<div class="viewer-container">
+				<!-- Header with progress bars -->
+				<div class="viewer-header">
+					<div class="progress-bars">
+						{#each activeUserStories.stories as _, i}
+							<div class="progress-bar-bg">
+								<div
+									class="progress-bar-fill"
+									style:width={i < activeStoryIndex
+										? '100%'
+										: i === activeStoryIndex
+											? `${progress}%`
+											: '0%'}
+								></div>
+							</div>
+						{/each}
 					</div>
-					<span class="username">{activeUserStories.user.username}</span>
-					<button class="close-btn" onclick={handleClose}>
-						<X />
-					</button>
-				</div>
-			</div>
 
-			<!-- Video Content -->
-			<div class="content-wrapper">
-				{#if videoHasError}
-					<div class="error-message">
-						<span>Failed to load video</span>
-						<button
-							class="retry-btn"
-							onclick={() => {
-								videoHasError = false;
-							}}
-						>
-							Retry
+					<div class="user-info">
+						<div class="avatar">
+							{activeUserStories.user.username[0].toUpperCase()}
+						</div>
+						<span class="username">{activeUserStories.user.username}</span>
+						<button class="close-btn" onclick={handleClose}>
+							<X />
 						</button>
 					</div>
-				{:else}
-					<!-- svelte-ignore a11y_media_has_caption -->
-					<video
-						bind:this={videoElement}
-						src={videoUrl}
-						autoplay
-						playsinline
-						class="story-video"
-						onerror={() => (videoHasError = true)}
-					></video>
-				{/if}
+				</div>
 
-				<!-- Navigation Zones -->
-				<div
-					class="nav-zone left"
-					onclick={handlePrev}
-					role="button"
-					tabindex="0"
-					onkeydown={(e) => e.key === 'Enter' && handlePrev()}
-				></div>
-				<div
-					class="nav-zone right"
-					onclick={handleNext}
-					role="button"
-					tabindex="0"
-					onkeydown={(e) => e.key === 'Enter' && handleNext()}
-				></div>
+				<!-- Video Content -->
+				<div class="content-wrapper">
+					{#if videoHasError}
+						<div class="error-message">
+							<span>Failed to load video</span>
+							<button
+								class="retry-btn"
+								onclick={() => {
+									videoHasError = false;
+								}}
+							>
+								Retry
+							</button>
+						</div>
+					{:else}
+						<!-- svelte-ignore a11y_media_has_caption -->
+						<video
+							bind:this={videoElement}
+							src={videoUrl}
+							autoplay
+							playsinline
+							class="story-video"
+							onerror={() => (videoHasError = true)}
+						></video>
+					{/if}
+
+					<!-- Navigation Zones (Mobile/Tap) -->
+					<div
+						class="nav-zone left"
+						onclick={handlePrev}
+						role="button"
+						tabindex="0"
+						onkeydown={(e) => e.key === 'Enter' && handlePrev()}
+					></div>
+					<div
+						class="nav-zone right"
+						onclick={handleNext}
+						role="button"
+						tabindex="0"
+						onkeydown={(e) => e.key === 'Enter' && handleNext()}
+					></div>
+				</div>
 			</div>
 
-			<!-- Controls (Optional, for desktop) -->
-			<button class="nav-btn prev" onclick={handlePrev} aria-label="Previous story">
-				<ChevronRight style="transform: rotate(180deg)" />
-			</button>
 			<button class="nav-btn next" onclick={handleNext} aria-label="Next story">
 				<ChevronRight />
 			</button>
@@ -153,10 +164,18 @@
 		backdrop-filter: blur(10px);
 	}
 
-	.viewer-container {
+	.viewer-wrapper {
 		position: relative;
 		width: 100%;
 		max-width: 450px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.viewer-container {
+		position: relative;
+		width: 100%;
 		height: 90vh;
 		background: #000;
 		border-radius: var(--radius-xl);
@@ -311,10 +330,15 @@
 	}
 
 	.nav-btn.prev {
-		left: -60px;
+		left: -70px;
 	}
+
+	.nav-btn.prev :global(svg) {
+		transform: rotate(180deg);
+	}
+
 	.nav-btn.next {
-		right: -60px;
+		right: -70px;
 	}
 
 	@media (max-width: 600px) {
