@@ -139,15 +139,24 @@ export class RedisService
    */
   async setUserOnline(userId: string): Promise<boolean> {
     const key = `${USER_REFCOUNT_PREFIX}${userId}`;
-    const count = await this.publisher.incr(key);
+    let count = await this.publisher.incr(key);
 
-    if (count === 1) {
-      await this.publisher.sadd(ONLINE_USERS_KEY, userId);
+    // Always update timestamp in ZSET
+    const now = Date.now();
+    // zadd returns 1 if the member was newly added, 0 if it already existed
+    const added = await this.publisher.zadd(ONLINE_USERS_KEY, now, userId);
 
-      return true;
+    // Robustness: if user was NOT in ZSET but count > 1, the counter is stale.
+    // This happens if the server crashed and missed some disconnect events.
+    if (added === 1 && count > 1) {
+      this.logger.warn(
+        `Stale counter detected for user ${userId} (count=${count.toString()}). Resetting to 1.`,
+      );
+      await this.publisher.set(key, 1);
+      count = 1;
     }
 
-    return false;
+    return count === 1;
   }
 
   async setUserOffline(userId: string): Promise<boolean> {
@@ -155,24 +164,47 @@ export class RedisService
     const count = await this.publisher.decr(key);
 
     if (count <= 0) {
-      // Cleanup to prevent negative counts or orphans
       await this.publisher.del(key);
-      const wasRemoved = await this.publisher.srem(ONLINE_USERS_KEY, userId);
+      await this.publisher.zrem(ONLINE_USERS_KEY, userId);
 
-      return wasRemoved === 1;
+      return true;
     }
 
     return false;
   }
 
+  async refreshUsersStatus(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    const now = Date.now();
+    const args: (string | number)[] = [];
+
+    for (const id of userIds) {
+      args.push(now, id);
+    }
+
+    await this.publisher.zadd(ONLINE_USERS_KEY, ...args);
+  }
+
   async getOnlineUserIds(): Promise<string[]> {
-    return this.publisher.smembers(ONLINE_USERS_KEY);
+    const twoMinutesAgo = Date.now() - 120_000;
+
+    // Optional: Clean up truly stale users
+    await this.publisher.zremrangebyscore(
+      ONLINE_USERS_KEY,
+      '-inf',
+      twoMinutesAgo,
+    );
+
+    return this.publisher.zrange(ONLINE_USERS_KEY, 0, -1);
   }
 
   async isUserOnline(userId: string): Promise<boolean> {
-    const result = await this.publisher.sismember(ONLINE_USERS_KEY, userId);
+    const score = await this.publisher.zscore(ONLINE_USERS_KEY, userId);
+    if (!score) return false;
 
-    return result === 1;
+    const twoMinutesAgo = Date.now() - 120_000;
+
+    return Number.parseInt(score, 10) > twoMinutesAgo;
   }
 
   /**

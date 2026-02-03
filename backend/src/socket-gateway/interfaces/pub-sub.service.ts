@@ -14,4 +14,5 @@ export abstract class PubSubService {
   abstract setUserOffline(userId: string): Promise<boolean>;
   abstract getOnlineUserIds(): Promise<string[]>;
   abstract isUserOnline(userId: string): Promise<boolean>;
+  abstract refreshUsersStatus(userIds: string[]): Promise<void>;
 }

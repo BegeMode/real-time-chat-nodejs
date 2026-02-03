@@ -41,6 +41,8 @@ export class SocketGatewayService
     timestamp: true,
   });
 
+  private heartbeatTimeout?: NodeJS.Timeout;
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -48,6 +50,12 @@ export class SocketGatewayService
     private readonly eventEmitter: EventEmitter2,
   ) {
     super();
+  }
+
+  onModuleDestroy(): void {
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+    }
   }
 
   // --- SocketTransport Implementation ---
@@ -79,6 +87,34 @@ export class SocketGatewayService
 
   afterInit(): void {
     this.logger.log('Socket Gateway initialized');
+    this.startHeartbeat();
+  }
+
+  private startHeartbeat(): void {
+    const heartbeat = async () => {
+      try {
+        const userIds = this.getConnectedUserIds();
+
+        if (userIds.length > 0) {
+          this.logger.debug(
+            `Heartbeat: refreshing status for ${userIds.length.toString()} users`,
+          );
+          await this.pubSubService.refreshUsersStatus(userIds);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Heartbeat error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      } finally {
+        // Schedule next run even if current one failed
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        this.heartbeatTimeout = setTimeout(() => heartbeat(), 60_000);
+      }
+    };
+
+    // Start first run
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    this.heartbeatTimeout = setTimeout(() => heartbeat(), 60_000);
   }
 
   async handleConnection(client: Socket): Promise<void> {
@@ -116,11 +152,11 @@ export class SocketGatewayService
       const isFirstConnection = await this.pubSubService.setUserOnline(userId);
 
       if (isFirstConnection) {
+        this.logger.log(`User ${userId} came online (first connection)`);
         await this.pubSubService.publish(PubSubChannels.USER_STATUS, {
           userId,
           isOnline: true,
         });
-        this.broadcast(SocketEvents.USER_ONLINE, { userId });
       }
 
       if (!this.userSockets.has(userId)) {
@@ -145,6 +181,10 @@ export class SocketGatewayService
     const authenticatedClient = client as IAuthenticatedSocket;
     const userId = authenticatedClient.userId;
 
+    this.logger.debug(
+      `Client disconnected: ${client.id}, userId: ${userId || 'undefined'}`,
+    );
+
     if (userId) {
       const userSocketSet = this.userSockets.get(userId);
 
@@ -161,7 +201,7 @@ export class SocketGatewayService
         .setUserOffline(userId)
         .then((isLastConnection: boolean) => {
           if (isLastConnection) {
-            this.broadcast(SocketEvents.USER_OFFLINE, { userId });
+            this.logger.log(`User ${userId} went offline (last connection)`);
 
             return this.pubSubService.publish(PubSubChannels.USER_STATUS, {
               userId,
