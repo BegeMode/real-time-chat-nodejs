@@ -68,6 +68,7 @@
 <Modal {isOpen} {onClose} title="New Conversation">
 	<div class="new-chat-content">
 		<div class="search-input-wrapper">
+			<!-- <Search class="search-icon" size={18} /> -->
 			<input
 				type="text"
 				placeholder="Search by username or email..."
@@ -117,12 +118,15 @@
 	.search-icon {
 		position: absolute;
 		left: var(--spacing-4);
+		top: 50%;
+		transform: translateY(-50%);
 		color: var(--color-gray-400);
+		pointer-events: none;
 	}
 
 	.search-input-wrapper input {
 		width: 100%;
-		padding: var(--spacing-3) var(--spacing-4) var(--spacing-3) var(--spacing-11);
+		padding: var(--spacing-4) var(--spacing-4) var(--spacing-4) var(--spacing-3);
 		border-radius: var(--radius-lg);
 		border: 1px solid var(--color-border);
 		background: var(--color-gray-50);

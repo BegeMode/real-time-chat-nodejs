@@ -216,7 +216,9 @@ export class ChatsService {
         const u = m.user;
 
         if (typeof u !== 'string') {
-          u.isOnline = onlineIdsSet.has(u._id);
+          // u is Mongoose Document
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+          u.isOnline = onlineIdsSet.has(u._id.toString());
         }
 
         return m;
@@ -254,7 +256,9 @@ export class ChatsService {
       const u = m.user;
 
       if (typeof u !== 'string') {
-        u.isOnline = onlineIdsSet.has(u._id);
+        // u is Mongoose Document
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+        u.isOnline = onlineIdsSet.has(u._id.toString());
       }
 
       return m;
@@ -303,7 +307,9 @@ export class ChatsService {
         const u = m.user;
 
         if (typeof u !== 'string') {
-          u.isOnline = onlineIdsSet.has(u._id);
+          // u is Mongoose Document
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+          u.isOnline = onlineIdsSet.has(u._id.toString());
         }
 
         return m;
