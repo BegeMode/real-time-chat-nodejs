@@ -108,6 +108,6 @@ export interface PubSubChatDeletedPayload {
 
 export interface PubSubNewStoryPayload {
   userId: string;
-  story: IStory;
+  story: IStory<IUser>;
   receiverIds: string[];
 }

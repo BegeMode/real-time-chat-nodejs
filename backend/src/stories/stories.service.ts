@@ -7,13 +7,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IStory,
+  IUser,
   PubSubChannels,
   PubSubNewStoryPayload,
 } from '@shared/index.js';
 import { IUserStories } from '@shared/story.js';
 import { PubSubService } from '@socket-gateway/interfaces/pub-sub.service.js';
 import { Story, StoryDocument } from '@stories/models/story.js';
-import { UserDocument } from '@users/models/user.js';
 import { Model, Types } from 'mongoose';
 
 @Injectable()
@@ -34,7 +34,7 @@ export class StoriesService {
     userId: string,
     file: Express.Multer.File,
     duration: number,
-  ): Promise<IStory> {
+  ): Promise<IStory<IUser>> {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     const fileName = `${userId}-${Date.now()}${path.extname(file.originalname)}`;
     const filePath = path.join(this.uploadPath, fileName);
@@ -51,42 +51,29 @@ export class StoriesService {
 
     const story = await newStory.save();
 
-    // Populate user info for the notification
-    const storyWithUser = await this.storyModel
+    // Fetch result with populated user using .lean() for performance and clean types
+    const result = await this.storyModel
       .findById(story._id)
-      .populate('user', 'username avatar')
+      .populate('user', 'username avatar email')
+      .lean<IStory<IUser>>()
       .exec();
 
-    if (!storyWithUser) {
+    if (!result) {
       throw new Error('Failed to create story with user info');
     }
 
     // Notify users who have a chat with this user
     const receiverIds = await this.chatsService.getChatPartnerIds(userId);
-    const user = storyWithUser.user as unknown as UserDocument;
-
-    const storyPayload: IStory = {
-      _id: story._id.toString(),
-      user: {
-        _id: userId,
-        username: user.username,
-        avatar: user.avatar,
-        email: '', // Not used in frontend stories
-      },
-      videoUrl: story.videoUrl,
-      duration: story.duration,
-      createdAt: story.createdAt,
-    };
 
     const pubSubPayload: PubSubNewStoryPayload = {
       userId,
-      story: storyPayload,
+      story: result,
       receiverIds,
     };
 
     await this.pubSubService.publish(PubSubChannels.NEW_STORY, pubSubPayload);
 
-    return storyPayload;
+    return result;
   }
 
   async findAllGroupedByUser(currentUserId: string): Promise<IUserStories[]> {
@@ -97,50 +84,42 @@ export class StoriesService {
 
     const stories = await this.storyModel
       .find({ user: { $in: allowedUserIds } })
-      .populate('user', 'username avatar')
+      .populate('user', 'username avatar email')
       // eslint-disable-next-line unicorn/no-array-sort
       .sort({ createdAt: -1 })
+      .lean<IStory<IUser>[]>()
       .exec();
 
     const grouped = new Map<string, IUserStories>();
 
-    // eslint-disable-next-line unicorn/no-array-for-each
-    stories.forEach((story: StoryDocument) => {
-      const user = story.user as unknown as UserDocument;
+    for (const story of stories) {
+      const user = story.user;
 
-      if (user instanceof Types.ObjectId) {
-        return;
+      if (typeof user === 'string') {
+        continue; // Should not happen with populate
       }
 
-      const userId = user._id.toString();
+      const userId = user._id;
 
       if (!grouped.has(userId)) {
         grouped.set(userId, {
-          user: {
-            _id: userId,
-            username: user.username,
-            avatar: user.avatar,
-            email: '', // Not needed for stories
-            isOnline: false, // Will be updated by presence logic if needed
-          },
+          user,
           stories: [],
-          hasUnseen: true, // For now, we'll mark as unseen
+          hasUnseen: true,
         });
       }
 
       const userGroup = grouped.get(userId);
 
       if (userGroup) {
-        // Oldest story is first
+        // Group stories by user, maintaining original field structure
+        // We cast back to string for the 'user' field in IStory if needed by the frontend format
         userGroup.stories.unshift({
-          _id: story._id.toString(),
+          ...story,
           user: userId,
-          videoUrl: story.videoUrl,
-          duration: story.duration,
-          createdAt: story.createdAt,
         });
       }
-    });
+    }
 
     return [...grouped.values()];
   }

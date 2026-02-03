@@ -17,6 +17,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IChat,
+  IMessage,
   IPaginated,
   IUser,
   PubSubChannels,
@@ -46,11 +47,11 @@ export class ChatsService {
   async createMessage(
     senderId: string,
     createMessageDto: CreateMessageDto,
-  ): Promise<MessageDocument> {
+  ): Promise<IMessage<IUser>> {
     const { chatId, text } = createMessageDto;
 
     // Validate conversation exists and user is participant
-    const chat = await this.chatModel.findById(chatId);
+    const chat = await this.chatModel.findById(chatId).lean().exec();
 
     if (!chat) {
       throw new NotFoundException('Chat not found');
@@ -79,23 +80,30 @@ export class ChatsService {
       updatedAt: new Date(),
     });
 
-    this.logger.log(
-      `Message created: ${message._id.toString()} in chat ${chatId}`,
-    );
+    // Fetch the created message with populated sender info using .lean()
+    const result = await this.messageModel
+      .findById(message._id)
+      .populate('senderId', 'username avatar email')
+      .lean<IMessage<IUser>>()
+      .exec();
+
+    if (!result) {
+      throw new Error('Failed to fetch message after creation');
+    }
 
     // Publish to Pub/Sub for Gateway to broadcast
     const pubSubPayload: PubSubNewMessagePayload = {
       chatId,
-      messageId: message._id.toString(),
+      messageId: result._id,
       senderId,
       receiverIds: chat.members.map((p) => p.user.toString()),
-      text: message.text,
-      createdAt: message.createdAt.toISOString(),
+      text: result.text,
+      createdAt: new Date(result.createdAt).toISOString(),
     };
 
     await this.pubSubService.publish(PubSubChannels.NEW_MESSAGE, pubSubPayload);
 
-    return message;
+    return result;
   }
 
   /**
@@ -105,9 +113,9 @@ export class ChatsService {
     userId: string,
     chatId: string,
     query: GetMessagesQueryDto,
-  ): Promise<IPaginated<MessageDocument>> {
+  ): Promise<IPaginated<IMessage<IUser>>> {
     // Validate conversation and user access
-    const chat = await this.chatModel.findById(chatId);
+    const chat = await this.chatModel.findById(chatId).lean().exec();
 
     if (!chat) {
       throw new NotFoundException('Chat not found');
@@ -139,7 +147,10 @@ export class ChatsService {
 
     // Filter for cursor-based pagination
     if (before) {
-      const beforeMessage = await this.messageModel.findById(before);
+      const beforeMessage = await this.messageModel
+        .findById(before)
+        .lean()
+        .exec();
 
       if (beforeMessage) {
         messageQuery.createdAt = { $lt: beforeMessage.createdAt };
@@ -153,7 +164,8 @@ export class ChatsService {
       // eslint-disable-next-line unicorn/no-array-sort
       .sort({ createdAt: -1 })
       .limit(limit + 1)
-      .populate('senderId', 'username avatar');
+      .populate('senderId', 'username avatar')
+      .lean<IMessage<IUser>[]>();
 
     const hasMore = messages.length > limit;
     const items = messages;
@@ -178,7 +190,7 @@ export class ChatsService {
   async getOrCreateChat(
     userId: string,
     otherUserIds: string[],
-  ): Promise<ChatDocument> {
+  ): Promise<IChat<IUser>> {
     const participantIds = [...new Set([userId, ...otherUserIds])];
 
     if (participantIds.length < 2) {
@@ -193,24 +205,24 @@ export class ChatsService {
         members: { $size: allMemberIds.length },
         'members.user': { $all: allMemberIds },
       })
-      .populate('members.user', 'username email avatar');
+      .populate('members.user', 'username email avatar')
+      .lean<IChat<IUser>>();
 
     if (existingChat) {
       const onlineIds = await this.pubSubService.getOnlineUserIds();
       const onlineIdsSet = new Set(onlineIds);
-      const chatObj = existingChat.toObject();
-      chatObj.members = chatObj.members.map((m) => {
-        const u = m.user as unknown as IUser;
 
-        if (u._id) {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
-          u.isOnline = onlineIdsSet.has(u._id.toString());
+      existingChat.members = existingChat.members.map((m) => {
+        const u = m.user;
+
+        if (typeof u !== 'string') {
+          u.isOnline = onlineIdsSet.has(u._id);
         }
 
         return m;
       });
 
-      return chatObj as unknown as ChatDocument;
+      return existingChat;
     }
 
     // Create new conversation
@@ -227,19 +239,22 @@ export class ChatsService {
 
     const populatedChat = await this.chatModel
       .findById(chat._id)
-      .populate('members.user', 'username email avatar');
+      .populate('members.user', 'username email avatar')
+      .lean<IChat<IUser>>()
+      .exec();
 
-    if (!populatedChat) return chat;
+    if (!populatedChat) {
+      throw new Error('Failed to fetch chat after creation');
+    }
 
     const onlineIds = await this.pubSubService.getOnlineUserIds();
     const onlineIdsSet = new Set(onlineIds);
-    const chatObj = populatedChat.toObject();
-    chatObj.members = chatObj.members.map((m) => {
-      const u = m.user as unknown as IUser;
 
-      if (u._id) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
-        u.isOnline = onlineIdsSet.has(u._id.toString());
+    populatedChat.members = populatedChat.members.map((m) => {
+      const u = m.user;
+
+      if (typeof u !== 'string') {
+        u.isOnline = onlineIdsSet.has(u._id);
       }
 
       return m;
@@ -247,8 +262,10 @@ export class ChatsService {
 
     // Publish to Pub/Sub to notify other participants
     const pubSubPayload: PubSubChatCreatedPayload = {
-      chat: chatObj as unknown as IChat<IUser>,
-      receiverIds: populatedChat.members.map((m) => m.user._id.toString()),
+      chat: populatedChat,
+      receiverIds: populatedChat.members.map((m) =>
+        typeof m.user === 'string' ? m.user : m.user._id,
+      ),
     };
 
     await this.pubSubService.publish(
@@ -256,13 +273,13 @@ export class ChatsService {
       pubSubPayload,
     );
 
-    return chatObj as unknown as ChatDocument;
+    return populatedChat;
   }
 
   /**
    * Get all conversations for a user
    */
-  async getChats(userId: string): Promise<ChatDocument[]> {
+  async getChats(userId: string): Promise<IChat<IUser>[]> {
     const chats = await this.chatModel
       .find({
         members: {
@@ -275,25 +292,24 @@ export class ChatsService {
       .populate('members.user', 'username email avatar')
       .populate('lastMessage')
       // eslint-disable-next-line unicorn/no-array-sort
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean<IChat<IUser>[]>();
 
     const onlineIds = await this.pubSubService.getOnlineUserIds();
     const onlineIdsSet = new Set(onlineIds);
 
     return chats.map((chat) => {
-      const chatObj = chat.toObject();
-      chatObj.members = chatObj.members.map((m) => {
-        const u = m.user as unknown as IUser;
+      chat.members = chat.members.map((m) => {
+        const u = m.user;
 
-        if (u._id) {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
-          u.isOnline = onlineIdsSet.has(u._id.toString());
+        if (typeof u !== 'string') {
+          u.isOnline = onlineIdsSet.has(u._id);
         }
 
         return m;
       });
 
-      return chatObj as unknown as ChatDocument;
+      return chat;
     });
   }
   /**
@@ -306,7 +322,7 @@ export class ChatsService {
     messageId: string,
     forEveryone: boolean,
   ): Promise<void> {
-    const message = await this.messageModel.findById(messageId);
+    const message = await this.messageModel.findById(messageId).lean().exec();
 
     if (!message) {
       throw new NotFoundException('Message not found');
@@ -325,13 +341,15 @@ export class ChatsService {
       await this.messageModel.findByIdAndDelete(messageId);
 
       // If this was the last message, update the chat's lastMessage
-      const chat = await this.chatModel.findById(chatId);
+      const chat = await this.chatModel.findById(chatId).lean().exec();
 
       if (chat?.lastMessage?.toString() === messageId) {
         const lastMsg = await this.messageModel
           .findOne({ chatId: new Types.ObjectId(chatId) })
           // eslint-disable-next-line unicorn/no-array-sort
-          .sort({ createdAt: -1 });
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec();
 
         await this.chatModel.findByIdAndUpdate(chatId, {
           lastMessage: lastMsg ? lastMsg._id : null,
@@ -427,7 +445,7 @@ export class ChatsService {
     chatId: string,
     isTyping: boolean,
   ): Promise<void> {
-    const chat = await this.chatModel.findById(chatId);
+    const chat = await this.chatModel.findById(chatId).lean().exec();
 
     if (!chat) {
       return;
@@ -455,14 +473,17 @@ export class ChatsService {
    * Get all user IDs who have a chat with the specified user.
    */
   async getChatPartnerIds(userId: string): Promise<string[]> {
-    const chats = await this.chatModel.find({
-      members: {
-        $elemMatch: {
-          user: new Types.ObjectId(userId),
-          deletedAt: null,
+    const chats = await this.chatModel
+      .find({
+        members: {
+          $elemMatch: {
+            user: new Types.ObjectId(userId),
+            deletedAt: null,
+          },
         },
-      },
-    });
+      })
+      .lean()
+      .exec();
 
     const partnerIds = new Set<string>();
 

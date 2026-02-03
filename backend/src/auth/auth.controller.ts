@@ -23,7 +23,6 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { IAuthResponse, IUser } from '@shared/index.js';
-import type { UserDocument } from '@users/models/user.js';
 import { UsersService } from '@users/users.service.js';
 import type { Response } from 'express';
 
@@ -161,7 +160,7 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized',
   })
-  getMe(@AuthUser() user: UserDocument): IUser {
+  getMe(@AuthUser() user: IUser): IUser {
     return this.usersService.toUserResponse(user);
   }
 }

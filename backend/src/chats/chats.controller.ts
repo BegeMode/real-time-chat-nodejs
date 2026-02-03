@@ -2,7 +2,6 @@ import { ChatsService } from '@chats/chats.service.js';
 import { CreateChatDto } from '@chats/dto/create-chat.dto.js';
 import { CreateMessageDto } from '@chats/dto/create-message.dto.js';
 import { GetMessagesQueryDto } from '@chats/dto/get-messages-query.dto.js';
-import { MessageDocument } from '@chats/models/message.js';
 import { AuthUser } from '@decorators/auth-user.decorator.js';
 import { JwtAuthGuard } from '@guards/jwt-auth.guard.js';
 import {
@@ -25,6 +24,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { IMessage, IUser } from '@shared/index.js';
 import { IPaginated } from '@shared/paginated.js';
 
 @ApiTags('chats')
@@ -102,7 +102,7 @@ export class ChatsController {
   async createMessage(
     @Body() createMessageDto: CreateMessageDto,
     @AuthUser('_id') userId: string,
-  ) {
+  ): Promise<IMessage<IUser>> {
     return this.chatsService.createMessage(userId, createMessageDto);
   }
 
@@ -121,7 +121,7 @@ export class ChatsController {
     @Param('chatId') chatId: string,
     @Query() query: GetMessagesQueryDto,
     @AuthUser('_id') userId: string,
-  ): Promise<IPaginated<MessageDocument>> {
+  ): Promise<IPaginated<IMessage<IUser>>> {
     return this.chatsService.getMessages(userId, chatId, query);
   }
 

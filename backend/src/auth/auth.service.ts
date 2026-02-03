@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { UserDocument } from '@users/models/user.js';
+import { IUser } from '@shared/user.js';
 import { UsersService } from '@users/users.service.js';
 import * as bcrypt from 'bcrypt';
 
@@ -51,10 +51,7 @@ export class AuthService {
 
     // Save refresh token
     const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
-    await this.usersService.updateRefreshToken(
-      user._id.toString(),
-      hashedRefreshToken,
-    );
+    await this.usersService.updateRefreshToken(user._id, hashedRefreshToken);
 
     this.logger.debug(`User ${user.email} registered successfully`);
 
@@ -76,6 +73,10 @@ export class AuthService {
     }
 
     // Verify password
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -87,10 +88,7 @@ export class AuthService {
 
     // Save refresh token
     const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
-    await this.usersService.updateRefreshToken(
-      user._id.toString(),
-      hashedRefreshToken,
-    );
+    await this.usersService.updateRefreshToken(user._id, hashedRefreshToken);
 
     this.logger.debug(`User ${user.email} logged in successfully`);
 
@@ -122,6 +120,13 @@ export class AuthService {
     }
 
     // Verify refresh token
+    if (!user.refreshToken) {
+      this.logger.warn(
+        `Refresh failed: No refresh token stored for user ${userId}`,
+      );
+      throw new UnauthorizedException('Access denied');
+    }
+
     const isRefreshTokenValid = await bcrypt.compare(
       refreshToken,
       user.refreshToken,
@@ -136,7 +141,7 @@ export class AuthService {
 
     // Generate new access token
     const payload: IJwtPayload = {
-      sub: user._id.toString(),
+      sub: user._id,
       email: user.email,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
@@ -153,15 +158,15 @@ export class AuthService {
     await this.usersService.updateRefreshToken(userId, null);
   }
 
-  async validateUser(userId: string): Promise<UserDocument | null> {
+  async validateUser(userId: string): Promise<IUser | null> {
     return this.usersService.findById(userId);
   }
 
   private async generateTokens(
-    user: UserDocument,
+    user: IUser,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload: IJwtPayload = {
-      sub: user._id.toString(),
+      sub: user._id,
       email: user.email,
     };
 

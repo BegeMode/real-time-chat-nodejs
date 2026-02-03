@@ -1,8 +1,8 @@
 import { IUser } from './user.js';
 
-export interface IStory {
+export interface IStory<T = string> {
 	_id: string;
-	user: string | IUser;
+	user: T;
 	videoUrl: string;
 	duration: number; // in seconds
 	createdAt: Date | string;
