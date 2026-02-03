@@ -2,7 +2,7 @@ import { IAuthenticatedSocket } from '@app-types/authenticated-socket.js';
 import { IJwtPayload } from '@app-types/jwt-payload.js';
 import { InternalEvents } from '@constants/internal-events.js';
 import { SocketAuthGuard } from '@guards/socket-auth.guard.js';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
@@ -139,7 +139,7 @@ export class SocketGatewayService
       })) satisfies IJwtPayload;
 
       if (!payload.sub) {
-        throw new Error('Invalid token payload');
+        throw new UnauthorizedException('Invalid token payload');
       }
 
       const userId = payload.sub;

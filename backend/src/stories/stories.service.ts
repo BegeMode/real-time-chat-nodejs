@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { ChatsService } from '@chats/chats.service.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   IStory,
@@ -59,7 +59,9 @@ export class StoriesService {
       .exec();
 
     if (!result) {
-      throw new Error('Failed to create story with user info');
+      throw new InternalServerErrorException(
+        'Failed to create story with user info',
+      );
     }
 
     // Notify users who have a chat with this user

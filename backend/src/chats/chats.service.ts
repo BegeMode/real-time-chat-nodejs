@@ -10,6 +10,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -88,7 +89,9 @@ export class ChatsService {
       .exec();
 
     if (!result) {
-      throw new Error('Failed to fetch message after creation');
+      throw new InternalServerErrorException(
+        'Failed to fetch message after creation',
+      );
     }
 
     // Publish to Pub/Sub for Gateway to broadcast
@@ -246,7 +249,9 @@ export class ChatsService {
       .exec();
 
     if (!populatedChat) {
-      throw new Error('Failed to fetch chat after creation');
+      throw new InternalServerErrorException(
+        'Failed to fetch chat after creation',
+      );
     }
 
     const onlineIds = await this.pubSubService.getOnlineUserIds();

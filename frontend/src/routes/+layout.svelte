@@ -10,6 +10,17 @@
 
 	// Initialize authorization when the application loads
 	onMount(async () => {
+		// Global error handlers
+		window.addEventListener('error', (event) => {
+			console.error('Global client error:', event.error);
+			// You can add sending to log service here
+		});
+
+		window.addEventListener('unhandledrejection', (event) => {
+			console.error('Unhandled Promise Rejection:', event.reason);
+			// You can add sending to log service here
+		});
+
 		// Check if there is a token and load user data
 		await authApi.initialize();
 		isInitialized = true;

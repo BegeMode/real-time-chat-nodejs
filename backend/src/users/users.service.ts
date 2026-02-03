@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { IUser } from '@shared/index.js';
 import type { UserDocument } from '@users/models/user.js';
@@ -28,7 +28,9 @@ export class UsersService {
       .exec();
 
     if (!result) {
-      throw new Error('Failed to fetch user after creation');
+      throw new InternalServerErrorException(
+        'Failed to fetch user after creation',
+      );
     }
 
     return result;
