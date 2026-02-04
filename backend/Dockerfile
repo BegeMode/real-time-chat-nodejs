@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 
@@ -23,7 +23,7 @@ COPY backend/ ./backend/
 RUN cd backend && yarn build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 # Install libc6-compat also for production
 RUN apk add --no-cache libc6-compat
