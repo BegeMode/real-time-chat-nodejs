@@ -55,5 +55,22 @@ describe('UsersController', () => {
       );
       expect(result).toHaveLength(1);
     });
+
+    it('should return empty array if request is aborted', async () => {
+      const abortController = new AbortController();
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+
+      service.searchUsers.mockRejectedValue(abortError);
+
+      const result = await controller.search(
+        'test',
+        mockUserId,
+        abortController.signal,
+      );
+
+      expect(result).toEqual([]);
+      expect(service.searchUsers).toHaveBeenCalled();
+    });
   });
 });

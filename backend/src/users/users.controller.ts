@@ -40,12 +40,21 @@ export class UsersController {
       return { success: true, data: [] };
     }
 
-    this.logger.debug(
-      `Searching for users with query: ${query}, currentUser: ${userId}`,
-    );
+    try {
+      const users = await this.usersService.searchUsers(query, userId, signal);
 
-    const users = await this.usersService.searchUsers(query, userId, signal);
+      return users.map((user) => this.usersService.toUserResponse(user));
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        (error.name === 'AbortError' || signal.aborted)
+      ) {
+        this.logger.debug(`Search request aborted for query: ${query}`);
 
-    return users.map((user) => this.usersService.toUserResponse(user));
+        return [];
+      }
+
+      throw error;
+    }
   }
 }
