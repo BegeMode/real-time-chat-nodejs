@@ -35,15 +35,24 @@ describe('UsersController', () => {
 
   describe('search', () => {
     it('should return empty success if query is empty', async () => {
-      const result = await controller.search('', mockUserId);
+      const result = await controller.search(
+        '',
+        mockUserId,
+        new AbortController().signal,
+      );
       expect(result).toEqual({ success: true, data: [] });
       expect(service.searchUsers).not.toHaveBeenCalled();
     });
 
     it('should call service.searchUsers if query is provided', async () => {
+      const mockSignal = new AbortController().signal;
       service.searchUsers.mockResolvedValue([{ _id: 'u1', username: 'test' }]);
-      const result = await controller.search('test', mockUserId);
-      expect(service.searchUsers).toHaveBeenCalledWith('test', mockUserId);
+      const result = await controller.search('test', mockUserId, mockSignal);
+      expect(service.searchUsers).toHaveBeenCalledWith(
+        'test',
+        mockUserId,
+        mockSignal,
+      );
       expect(result).toHaveLength(1);
     });
   });

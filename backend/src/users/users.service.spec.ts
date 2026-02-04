@@ -118,7 +118,25 @@ describe('UsersService', () => {
         expect.objectContaining({
           _id: { $ne: mockUserId },
         }),
+        null,
+        expect.any(Object),
       );
+    });
+
+    it('should pass signal to mongoose', async () => {
+      userModel.find.mockReturnValue({
+        limit: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([]),
+      });
+
+      const controller = new AbortController();
+      await service.searchUsers('test', mockUserId, controller.signal);
+
+      expect(userModel.find).toHaveBeenCalledWith(expect.any(Object), null, {
+        signal: controller.signal,
+      });
     });
   });
 

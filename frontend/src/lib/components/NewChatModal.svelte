@@ -4,6 +4,8 @@
 	import { chatsStore } from '$lib/stores/chats.svelte';
 	import type { IUser } from '@shared/index';
 	import { ChevronRight } from './icons';
+	import { debounce } from '$lib/utils/debounce';
+	import { toastStore } from '$lib/stores/toasts.svelte';
 
 	interface Props {
 		isOpen: boolean;
@@ -17,21 +19,40 @@
 	let isSearching = $state(false);
 	let error = $state<string | null>(null);
 
-	async function handleSearch() {
-		if (searchQuery.length < 2) {
+	let searchController: AbortController | null = null;
+	const debouncedSearch = debounce((query: string) => handleSearch(query), 300);
+
+	async function handleSearch(query: string) {
+		if (query.length < 2) {
 			users = [];
 			return;
 		}
 
+		// Cancel previous request if it exists
+		if (searchController) {
+			searchController.abort();
+		}
+		searchController = new AbortController();
+
 		isSearching = true;
 		error = null;
 		try {
-			users = await usersApi.searchUsers(searchQuery);
-		} catch (err: any) {
+			users = await usersApi.searchUsers(query, searchController.signal);
+		} catch (err) {
+			const e = err as Error;
+			// Don't set error if request was cancelled
+			if (e.name === 'CanceledError' || e.name === 'AbortError') {
+				return;
+			}
 			error = 'Failed to search users';
-			console.error(err);
+			console.error(error);
+			toastStore.error(error);
 		} finally {
-			isSearching = false;
+			// Only set isSearching to false if this was the last request
+			if (!searchController?.signal.aborted) {
+				isSearching = false;
+				searchController = null;
+			}
 		}
 	}
 
@@ -44,12 +65,9 @@
 		}
 	});
 
-	// Debounced search
-	let timeout: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		clearTimeout(timeout);
 		if (searchQuery) {
-			timeout = setTimeout(handleSearch, 300);
+			debouncedSearch(searchQuery);
 		} else {
 			users = [];
 		}

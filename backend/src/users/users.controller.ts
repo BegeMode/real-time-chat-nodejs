@@ -1,3 +1,4 @@
+import { AbortSignal } from '@decorators/abort-signal.decorator.js';
 import { AuthUser } from '@decorators/auth-user.decorator.js';
 import { JwtAuthGuard } from '@guards/jwt-auth.guard.js';
 import { Controller, Get, Logger, Query, UseGuards } from '@nestjs/common';
@@ -30,7 +31,11 @@ export class UsersController {
     status: 200,
     description: 'Returns list of matching users',
   })
-  async search(@Query('q') query: string, @AuthUser('_id') userId: string) {
+  async search(
+    @Query('q') query: string,
+    @AuthUser('_id') userId: string,
+    @AbortSignal() signal: AbortSignal,
+  ) {
     if (!query) {
       return { success: true, data: [] };
     }
@@ -39,7 +44,7 @@ export class UsersController {
       `Searching for users with query: ${query}, currentUser: ${userId}`,
     );
 
-    const users = await this.usersService.searchUsers(query, userId);
+    const users = await this.usersService.searchUsers(query, userId, signal);
 
     return users.map((user) => this.usersService.toUserResponse(user));
   }

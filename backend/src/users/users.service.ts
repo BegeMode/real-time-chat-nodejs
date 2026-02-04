@@ -62,15 +62,23 @@ export class UsersService {
       .exec();
   }
 
-  async searchUsers(query: string, excludeUserId: string): Promise<IUser[]> {
+  async searchUsers(
+    query: string,
+    excludeUserId: string,
+    signal?: AbortSignal,
+  ): Promise<IUser[]> {
     return this.userModel
-      .find({
-        _id: { $ne: excludeUserId },
-        $or: [
-          { username: { $regex: query, $options: 'i' } },
-          { email: { $regex: query, $options: 'i' } },
-        ],
-      })
+      .find(
+        {
+          _id: { $ne: excludeUserId },
+          $or: [
+            { username: { $regex: query, $options: 'i' } },
+            { email: { $regex: query, $options: 'i' } },
+          ],
+        },
+        null,
+        { signal },
+      )
       .limit(10)
       .select('-password -refreshToken')
       .lean<IUser[]>()
